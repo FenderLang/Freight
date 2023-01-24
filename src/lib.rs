@@ -6,11 +6,11 @@ pub struct Function<V: Clone + Default> {
 }
 
 pub struct VMWriter<V: Clone + Default> {
-    functions: HashMap<String, Function<V>>,
+    functions: Vec<Function<V>>,
 }
 
 impl<V: Clone + Default> VMWriter<V> {
-    fn write_function(&mut self, function: Function<V>) {
+    fn include_function(&mut self, function: Function<V>) -> usize {
         todo!()
     }
     
