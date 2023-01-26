@@ -87,11 +87,17 @@ impl<V: ValueSystem> ExecutionContext<V> {
             Instruction::Return(offset) => {
                 self.return_value = self.get(*offset).clone();
                 self.frame = self.frames.pop().unwrap();
-            }
+            },
             Instruction::ReturnConstant(c) => {
                 self.return_value = c.clone();
                 self.frame = self.frames.pop().unwrap();
-            }
+            },
+            Instruction::UnaryOperation(op) => {
+                self.return_value = op.apply(&self.return_value);
+            },
+            Instruction::BinaryOperation(op, index) => {
+                self.return_value = op.apply(&self.return_value, self.get(*index));
+            },
         }
     }
     
@@ -111,4 +117,6 @@ pub enum Instruction<V: ValueSystem> {
     InvokeNative(fn(&mut ExecutionContext<V>) -> V::V),
     Return(usize),
     ReturnConstant(V::V),
+    UnaryOperation(V::U),
+    BinaryOperation(V::B, usize)
 }
