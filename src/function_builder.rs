@@ -4,9 +4,7 @@ struct FunctionBuilder {
 
 impl FunctionBuilder {
     fn new() -> FunctionBuilder {
-        Self {
-            args: 0,
-        }
+        Self { args: 0 }
     }
 
     fn create_variable(&mut self) -> usize {

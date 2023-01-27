@@ -7,7 +7,7 @@ enum FenderValue {
     Bool(bool),
     Error,
     #[default]
-    Null
+    Null,
 }
 
 enum BinaryOperator {
@@ -65,8 +65,8 @@ impl crate::BinaryOperator<FenderValue> for BinaryOperator {
 
 impl crate::UnaryOperator<FenderValue> for UnaryOperator {
     fn apply(&self, val: &FenderValue) -> FenderValue {
-        use UnaryOperator::*;
         use FenderValue::*;
+        use UnaryOperator::*;
         match (self, val) {
             (Neg, Int(val)) => Int(-val),
             (Neg, Float(val)) => Float(-val),

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-pub mod function_builder;
 mod fender_tmp;
+pub mod function_builder;
 
 pub struct Function<V: ValueSystem> {
     instructions: Vec<Instruction<V>>,
@@ -22,7 +22,7 @@ impl<V: ValueSystem> VMWriter<V> {
     fn include_function(&mut self, function: Function<V>) -> usize {
         todo!()
     }
-    
+
     fn finish(self) -> ExecutionContext<V> {
         todo!()
     }
@@ -45,9 +45,7 @@ trait UnaryOperator<V: Value> {
     fn apply(&self, val: &V) -> V;
 }
 
-trait Value: Clone + Default {
-
-}
+trait Value: Clone + Default {}
 
 impl<V: ValueSystem> ExecutionContext<V> {
     pub fn new(instructions: Vec<Instruction<V>>, stack_size: usize) -> ExecutionContext<V> {
@@ -74,7 +72,9 @@ impl<V: ValueSystem> ExecutionContext<V> {
         match instruction {
             Instruction::Create(offset, creator) => *self.get_mut(*offset) = creator(self),
             Instruction::Move(from, to) => *self.get_mut(*to) = self.get(*from).clone(),
-            Instruction::MoveReturn(to) => *self.get_mut(*to) = std::mem::replace(&mut self.return_value, Default::default()),
+            Instruction::MoveReturn(to) => {
+                *self.get_mut(*to) = std::mem::replace(&mut self.return_value, Default::default())
+            }
             Instruction::Invoke(args, stack_size, instruction) => {
                 self.frames.push(self.frame);
                 self.frame -= args;
@@ -87,20 +87,20 @@ impl<V: ValueSystem> ExecutionContext<V> {
             Instruction::Return(offset) => {
                 self.return_value = self.get(*offset).clone();
                 self.frame = self.frames.pop().unwrap();
-            },
+            }
             Instruction::ReturnConstant(c) => {
                 self.return_value = c.clone();
                 self.frame = self.frames.pop().unwrap();
-            },
+            }
             Instruction::UnaryOperation(op) => {
                 self.return_value = op.apply(&self.return_value);
-            },
+            }
             Instruction::BinaryOperation(op, index) => {
                 self.return_value = op.apply(&self.return_value, self.get(*index));
-            },
+            }
         }
     }
-    
+
     fn run(&mut self) {
         while self.instruction < self.instructions.len() {
             self.execute(self.instruction);
@@ -118,5 +118,5 @@ pub enum Instruction<V: ValueSystem> {
     Return(usize),
     ReturnConstant(V::V),
     UnaryOperation(V::U),
-    BinaryOperation(V::B, usize)
+    BinaryOperation(V::B, usize),
 }
