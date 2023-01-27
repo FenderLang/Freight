@@ -3,22 +3,23 @@ use std::collections::HashMap;
 mod fender_tmp;
 pub mod function_builder;
 
-pub struct Function<V: ValueSystem> {
+pub struct Function<V: TypeSystem> {
     instructions: Vec<Instruction<V>>,
     args: usize,
 }
 
-pub trait ValueSystem {
+pub trait TypeSystem {
     type V: Value;
     type B: BinaryOperator<Self::V>;
     type U: UnaryOperator<Self::V>;
+    type T;
 }
 
-pub struct VMWriter<V: ValueSystem> {
+pub struct VMWriter<V: TypeSystem> {
     functions: Vec<Function<V>>,
 }
 
-impl<V: ValueSystem> VMWriter<V> {
+impl<V: TypeSystem> VMWriter<V> {
     fn include_function(&mut self, function: Function<V>) -> usize {
         todo!()
     }
@@ -28,7 +29,7 @@ impl<V: ValueSystem> VMWriter<V> {
     }
 }
 
-pub struct ExecutionContext<V: ValueSystem> {
+pub struct ExecutionContext<V: TypeSystem> {
     stack: Vec<V::V>,
     instructions: Vec<Instruction<V>>,
     instruction: usize,
@@ -45,9 +46,12 @@ trait UnaryOperator<V: Value> {
     fn apply(&self, val: &V) -> V;
 }
 
-trait Value: Clone + Default {}
+trait Value: Clone + Default {
+    type V: TypeSystem;
+    fn get_type(&self) -> &<Self::V as TypeSystem>::T;
+}
 
-impl<V: ValueSystem> ExecutionContext<V> {
+impl<V: TypeSystem> ExecutionContext<V> {
     pub fn new(instructions: Vec<Instruction<V>>, stack_size: usize) -> ExecutionContext<V> {
         ExecutionContext {
             stack: Vec::with_capacity(stack_size),
@@ -109,7 +113,7 @@ impl<V: ValueSystem> ExecutionContext<V> {
     }
 }
 
-pub enum Instruction<V: ValueSystem> {
+pub enum Instruction<V: TypeSystem> {
     Create(usize, fn(&ExecutionContext<V>) -> V::V),
     Move(usize, usize),
     MoveReturn(usize),

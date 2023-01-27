@@ -1,12 +1,22 @@
-use crate::Value;
+use crate::{TypeSystem, Value};
+
+struct FenderTypeSystem;
 
 #[derive(Clone, Default)]
 enum FenderValue {
     Int(i64),
     Float(f64),
     Bool(bool),
-    Error,
+    Error(String),
     #[default]
+    Null,
+}
+
+enum TypeId {
+    Int,
+    Float,
+    Bool,
+    Error,
     Null,
 }
 
@@ -23,7 +33,32 @@ enum UnaryOperator {
     BoolNeg,
 }
 
-impl Value for FenderValue {}
+impl Value for FenderValue {
+    type V = FenderTypeSystem;
+
+    fn get_type(&self) -> &<Self::V as crate::TypeSystem>::T {
+        match self {
+            FenderValue::Int(_) => &TypeId::Int,
+            FenderValue::Float(_) => &TypeId::Float,
+            FenderValue::Bool(_) => &TypeId::Bool,
+            FenderValue::Error(_) => &TypeId::Error,
+            FenderValue::Null => &TypeId::Null,
+        }
+    }
+}
+
+impl ToString for TypeId {
+    fn to_string(&self) -> String {
+        match self {
+            TypeId::Int => "Int",
+            TypeId::Float => "Float",
+            TypeId::Bool => "Bool",
+            TypeId::Error => "Error",
+            TypeId::Null => "Null",
+        }
+        .to_owned()
+    }
+}
 
 impl crate::BinaryOperator<FenderValue> for BinaryOperator {
     fn apply(&self, a: &FenderValue, b: &FenderValue) -> FenderValue {
@@ -34,31 +69,51 @@ impl crate::BinaryOperator<FenderValue> for BinaryOperator {
             (Add, Float(a), Float(b)) => Float(a + b),
             (Add, Int(a), Float(b)) => Float(*a as f64 + b),
             (Add, Float(a), Int(b)) => Float(a + *b as f64),
-            (Add, _, _) => Error,
+            (Add, _, _) => Error(format!(
+                "Cannot add {} and {}",
+                a.get_type().to_string(),
+                b.get_type().to_string()
+            )),
 
             (Sub, Int(a), Int(b)) => Int(a - b),
             (Sub, Float(a), Float(b)) => Float(a - b),
             (Sub, Int(a), Float(b)) => Float(*a as f64 - b),
             (Sub, Float(a), Int(b)) => Float(a - *b as f64),
-            (Sub, _, _) => Error,
+            (Sub, _, _) => Error(format!(
+                    "Cannot subtract {} and {}",
+                a.get_type().to_string(),
+                b.get_type().to_string()
+            )),
 
             (Mul, Int(a), Int(b)) => Int(a * b),
             (Mul, Float(a), Float(b)) => Float(a * b),
             (Mul, Int(a), Float(b)) => Float(*a as f64 * b),
             (Mul, Float(a), Int(b)) => Float(a * *b as f64),
-            (Mul, _, _) => Error,
+            (Mul, _, _) => Error(format!(
+                    "Cannot multiply {} and {}",
+                a.get_type().to_string(),
+                b.get_type().to_string()
+            )),
 
             (Div, Int(a), Int(b)) => Int(a / b),
             (Div, Float(a), Float(b)) => Float(a / b),
             (Div, Int(a), Float(b)) => Float(*a as f64 / b),
             (Div, Float(a), Int(b)) => Float(a / *b as f64),
-            (Div, _, _) => Error,
+            (Div, _, _) => Error(format!(
+                    "Cannot divide {} and {}",
+                a.get_type().to_string(),
+                b.get_type().to_string()
+            )),
 
             (Mod, Int(a), Int(b)) => Int(a % b),
             (Mod, Float(a), Float(b)) => Float(a % b),
             (Mod, Int(a), Float(b)) => Float(*a as f64 % b),
             (Mod, Float(a), Int(b)) => Float(a % *b as f64),
-            (Mod, _, _) => Error,
+            (Mod, _, _) => Error(format!(
+                    "Cannot modulus {} and {}",
+                a.get_type().to_string(),
+                b.get_type().to_string()
+            )),
         }
     }
 }
@@ -70,10 +125,17 @@ impl crate::UnaryOperator<FenderValue> for UnaryOperator {
         match (self, val) {
             (Neg, Int(val)) => Int(-val),
             (Neg, Float(val)) => Float(-val),
-            (Neg, _) => Error,
+            (Neg, _) => Error(format!("Cannot negate {}", val.get_type().to_string())),
 
             (BoolNeg, Bool(val)) => Bool(!val),
-            (BoolNeg, _) => Error,
+            (BoolNeg, _) => Error(format!("Cannot boolean-negate {}", val.get_type().to_string())),
         }
     }
+}
+
+impl TypeSystem for FenderTypeSystem {
+    type V = FenderValue;
+    type B = BinaryOperator;
+    type U = UnaryOperator;
+    type T = TypeId;
 }
