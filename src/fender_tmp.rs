@@ -1,9 +1,14 @@
+use std::{rc::Rc, cell::UnsafeCell};
+
 use crate::{TypeSystem, Value};
 
 struct FenderTypeSystem;
 
+type Reference = Rc<UnsafeCell<FenderValue>>;
+
 #[derive(Clone, Default)]
 enum FenderValue {
+    Reference(Reference),
     Int(i64),
     Float(f64),
     Bool(bool),
@@ -18,6 +23,7 @@ enum TypeId {
     Bool,
     Error,
     Null,
+    Reference,
 }
 
 enum BinaryOperator {
@@ -45,6 +51,7 @@ impl Value for FenderValue {
             FenderValue::Bool(_) => &TypeId::Bool,
             FenderValue::Error(_) => &TypeId::Error,
             FenderValue::Null => &TypeId::Null,
+            FenderValue::Reference(_) => &TypeId::Reference,
         }
     }
 }
@@ -57,6 +64,7 @@ impl ToString for TypeId {
             TypeId::Bool => "Bool",
             TypeId::Error => "Error",
             TypeId::Null => "Null",
+            TypeId::Reference => "Reference",
         }
         .to_owned()
     }
