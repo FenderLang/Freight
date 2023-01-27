@@ -8,7 +8,7 @@ pub struct Function<V: ValueSystem> {
     args: usize,
 }
 
-trait ValueSystem {
+pub trait ValueSystem {
     type V: Value;
     type B: BinaryOperator<Self::V>;
     type U: UnaryOperator<Self::V>;
