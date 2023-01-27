@@ -82,7 +82,7 @@ impl crate::BinaryOperator<FenderValue> for BinaryOperator {
             (Sub, Int(a), Float(b)) => Float(*a as f64 - b),
             (Sub, Float(a), Int(b)) => Float(a - *b as f64),
             (Sub, _, _) => Error(format!(
-                    "Cannot subtract {} and {}",
+                "Cannot subtract {} and {}",
                 a.get_type().to_string(),
                 b.get_type().to_string()
             )),
@@ -92,7 +92,7 @@ impl crate::BinaryOperator<FenderValue> for BinaryOperator {
             (Mul, Int(a), Float(b)) => Float(*a as f64 * b),
             (Mul, Float(a), Int(b)) => Float(a * *b as f64),
             (Mul, _, _) => Error(format!(
-                    "Cannot multiply {} and {}",
+                "Cannot multiply {} and {}",
                 a.get_type().to_string(),
                 b.get_type().to_string()
             )),
@@ -102,7 +102,7 @@ impl crate::BinaryOperator<FenderValue> for BinaryOperator {
             (Div, Int(a), Float(b)) => Float(*a as f64 / b),
             (Div, Float(a), Int(b)) => Float(a / *b as f64),
             (Div, _, _) => Error(format!(
-                    "Cannot divide {} and {}",
+                "Cannot divide {} and {}",
                 a.get_type().to_string(),
                 b.get_type().to_string()
             )),
@@ -112,16 +112,24 @@ impl crate::BinaryOperator<FenderValue> for BinaryOperator {
             (Mod, Int(a), Float(b)) => Float(*a as f64 % b),
             (Mod, Float(a), Int(b)) => Float(a % *b as f64),
             (Mod, _, _) => Error(format!(
-                    "Cannot modulus {} and {}",
+                "Cannot modulus {} and {}",
                 a.get_type().to_string(),
                 b.get_type().to_string()
             )),
 
             (And, Bool(a), Bool(b)) => Bool(*a && *b),
-            (And, _, _) => Error(format!("Cannot boolean and {} and {}", a.get_type().to_string(), b.get_type().to_string())),
+            (And, _, _) => Error(format!(
+                "Cannot boolean and {} and {}",
+                a.get_type().to_string(),
+                b.get_type().to_string()
+            )),
 
             (Or, Bool(a), Bool(b)) => Bool(*a || *b),
-            (Or, _, _) => Error(format!("Cannot boolean or {} and {}", a.get_type().to_string(), b.get_type().to_string())),
+            (Or, _, _) => Error(format!(
+                "Cannot boolean or {} and {}",
+                a.get_type().to_string(),
+                b.get_type().to_string()
+            )),
         }
     }
 }
@@ -136,7 +144,10 @@ impl crate::UnaryOperator<FenderValue> for UnaryOperator {
             (Neg, _) => Error(format!("Cannot negate {}", val.get_type().to_string())),
 
             (BoolNeg, Bool(val)) => Bool(!val),
-            (BoolNeg, _) => Error(format!("Cannot boolean-negate {}", val.get_type().to_string())),
+            (BoolNeg, _) => Error(format!(
+                "Cannot boolean-negate {}",
+                val.get_type().to_string()
+            )),
         }
     }
 }
