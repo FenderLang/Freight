@@ -26,6 +26,8 @@ enum BinaryOperator {
     Div,
     Mod,
     Mul,
+    And,
+    Or,
 }
 
 enum UnaryOperator {
@@ -114,6 +116,12 @@ impl crate::BinaryOperator<FenderValue> for BinaryOperator {
                 a.get_type().to_string(),
                 b.get_type().to_string()
             )),
+
+            (And, Bool(a), Bool(b)) => Bool(*a && *b),
+            (And, _, _) => Error(format!("Cannot boolean and {} and {}", a.get_type().to_string(), b.get_type().to_string())),
+
+            (Or, Bool(a), Bool(b)) => Bool(*a || *b),
+            (Or, _, _) => Error(format!("Cannot boolean or {} and {}", a.get_type().to_string(), b.get_type().to_string())),
         }
     }
 }
