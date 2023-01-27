@@ -19,14 +19,16 @@ pub struct VMWriter<V: TypeSystem> {
     functions: Vec<Function<V>>,
 }
 
-impl<V: TypeSystem> VMWriter<V> {
-    fn include_function(&mut self, function: Function<V>) -> usize {
-        todo!()
-    }
-
-    fn finish(self) -> ExecutionContext<V> {
-        todo!()
-    }
+pub enum Instruction<V: TypeSystem> {
+    Create(usize, fn(&ExecutionContext<V>) -> V::V),
+    Move(usize, usize),
+    MoveReturn(usize),
+    Invoke(usize, usize, usize),
+    InvokeNative(fn(&mut ExecutionContext<V>) -> V::V),
+    Return(usize),
+    ReturnConstant(V::V),
+    UnaryOperation(V::U),
+    BinaryOperation(V::B, usize),
 }
 
 pub struct ExecutionContext<V: TypeSystem> {
@@ -38,17 +40,27 @@ pub struct ExecutionContext<V: TypeSystem> {
     return_value: V::V,
 }
 
-trait BinaryOperator<V: Value> {
+pub trait BinaryOperator<V: Value> {
     fn apply(&self, a: &V, b: &V) -> V;
 }
 
-trait UnaryOperator<V: Value> {
+pub trait UnaryOperator<V: Value> {
     fn apply(&self, val: &V) -> V;
 }
 
-trait Value: Clone + Default {
+pub trait Value: Clone + Default {
     type V: TypeSystem;
     fn get_type(&self) -> &<Self::V as TypeSystem>::T;
+}
+
+impl<V: TypeSystem> VMWriter<V> {
+    fn include_function(&mut self, function: Function<V>) -> usize {
+        todo!()
+    }
+
+    fn finish(self) -> ExecutionContext<V> {
+        todo!()
+    }
 }
 
 impl<V: TypeSystem> ExecutionContext<V> {
@@ -111,16 +123,4 @@ impl<V: TypeSystem> ExecutionContext<V> {
             self.instruction += 1;
         }
     }
-}
-
-pub enum Instruction<V: TypeSystem> {
-    Create(usize, fn(&ExecutionContext<V>) -> V::V),
-    Move(usize, usize),
-    MoveReturn(usize),
-    Invoke(usize, usize, usize),
-    InvokeNative(fn(&mut ExecutionContext<V>) -> V::V),
-    Return(usize),
-    ReturnConstant(V::V),
-    UnaryOperation(V::U),
-    BinaryOperation(V::B, usize),
 }
