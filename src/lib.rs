@@ -42,6 +42,7 @@ pub struct ExecutionContext<V: TypeSystem> {
 
 pub trait BinaryOperator<V: Value> {
     fn apply(&self, a: &V, b: &V) -> V;
+    fn priority(&self) -> usize;
 }
 
 pub trait UnaryOperator<V: Value> {

@@ -140,6 +140,18 @@ impl crate::BinaryOperator<FenderValue> for BinaryOperator {
             )),
         }
     }
+
+    fn priority(&self) -> usize {
+        match self {
+            BinaryOperator::Add => 0,
+            BinaryOperator::Sub => 0,
+            BinaryOperator::Div => 1,
+            BinaryOperator::Mod => 1,
+            BinaryOperator::Mul => 1,
+            BinaryOperator::And => 2,
+            BinaryOperator::Or => 2,
+        }
+    }
 }
 
 impl crate::UnaryOperator<FenderValue> for UnaryOperator {
