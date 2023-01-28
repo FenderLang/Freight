@@ -22,13 +22,15 @@ pub struct VMWriter<V: TypeSystem> {
 pub enum Instruction<V: TypeSystem> {
     Create(usize, fn(&ExecutionContext<V>) -> V::V),
     Move(usize, usize),
-    MoveReturn(usize),
+    MoveFromReturn(usize),
+    MoveToReturn(usize),
+    MoveRightOperand(usize),
     Invoke(usize, usize, usize),
     InvokeNative(fn(&mut ExecutionContext<V>) -> V::V),
     Return(usize),
     ReturnConstant(V::V),
     UnaryOperation(V::U),
-    BinaryOperation(V::B, usize),
+    BinaryOperation(V::B),
 }
 
 pub struct ExecutionContext<V: TypeSystem> {
@@ -38,6 +40,7 @@ pub struct ExecutionContext<V: TypeSystem> {
     frames: Vec<usize>,
     frame: usize,
     return_value: V::V,
+    right_operand: V::V,
 }
 
 pub trait BinaryOperator<V: Value> {
@@ -73,6 +76,7 @@ impl<V: TypeSystem> ExecutionContext<V> {
             frames: vec![],
             frame: 0,
             return_value: Default::default(),
+            right_operand: Default::default(),
         }
     }
 
@@ -89,9 +93,15 @@ impl<V: TypeSystem> ExecutionContext<V> {
         match instruction {
             Instruction::Create(offset, creator) => *self.get_mut(*offset) = creator(self),
             Instruction::Move(from, to) => *self.get_mut(*to) = self.get(*from).clone(),
-            Instruction::MoveReturn(to) => {
+            Instruction::MoveFromReturn(to) => {
                 *self.get_mut(*to) = std::mem::replace(&mut self.return_value, Default::default())
-            }
+            },
+            Instruction::MoveToReturn(from) => {
+                self.return_value = self.get(*from).clone();
+            },
+            Instruction::MoveRightOperand(from) => {
+                self.right_operand = self.get(*from).clone();
+            },
             Instruction::Invoke(args, stack_size, instruction) => {
                 self.frames.push(self.frame);
                 self.frame -= args;
@@ -99,22 +109,22 @@ impl<V: TypeSystem> ExecutionContext<V> {
                 for _ in 0..stack_size - args {
                     self.stack.push(Default::default());
                 }
-            }
+            },
             Instruction::InvokeNative(func) => self.return_value = func(self),
             Instruction::Return(offset) => {
                 self.return_value = self.get(*offset).clone();
                 self.frame = self.frames.pop().unwrap();
-            }
+            },
             Instruction::ReturnConstant(c) => {
                 self.return_value = c.clone();
                 self.frame = self.frames.pop().unwrap();
-            }
+            },
             Instruction::UnaryOperation(op) => {
                 self.return_value = op.apply(&self.return_value);
-            }
-            Instruction::BinaryOperation(op, index) => {
-                self.return_value = op.apply(&self.return_value, self.get(*index));
-            }
+            },
+            Instruction::BinaryOperation(op) => {
+                self.return_value = op.apply(&self.return_value, &self.right_operand);
+            },
         }
     }
 
