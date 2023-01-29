@@ -28,7 +28,6 @@ pub struct ExecutionContext<V: Clone + Default> {
     return_value: V,
 }
 
-
 impl<V: Clone + Default> ExecutionContext<V> {
     pub fn new(instructions: Vec<Instruction<V>>, stack_size: usize) -> ExecutionContext<V> {
         ExecutionContext {
@@ -91,4 +90,13 @@ pub enum Instruction<V: Default + Clone> {
     InvokeNative(fn(&mut ExecutionContext<V>) -> V),
     Return(usize),
     ReturnConstant(V),
+}
+
+pub enum Values<V: Default + Clone> {
+    Int(i32),
+    Float(f32),
+    String(String),
+    List(Vec<V>),
+    Map(HashMap<String, V>),
+    Function(usize),
 }
