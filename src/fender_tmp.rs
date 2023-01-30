@@ -6,9 +6,13 @@ struct FenderTypeSystem;
 
 type Reference = Rc<UnsafeCell<FenderValue>>;
 
+enum FenderReference {
+    Ref(Reference),
+    Raw(FenderValue),
+}
+
 #[derive(Clone, Default)]
 enum FenderValue {
-    Reference(Reference),
     Int(i64),
     Float(f64),
     Bool(bool),
@@ -51,7 +55,6 @@ impl Value for FenderValue {
             FenderValue::Bool(_) => &TypeId::Bool,
             FenderValue::Error(_) => &TypeId::Error,
             FenderValue::Null => &TypeId::Null,
-            FenderValue::Reference(_) => &TypeId::Reference,
         }
     }
 }
