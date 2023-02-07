@@ -40,9 +40,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         match instruction {
             Create(offset, creator) => *self.get_mut(*offset) = creator(self),
             Move(from, to) => *self.get_mut(*to) = self.get(*from).clone(),
-            MoveFromReturn(to) => {
-                *self.get_mut(*to) = std::mem::replace(&mut self.return_value, Default::default())
-            }
+            MoveFromReturn(to) => *self.get_mut(*to) = std::mem::take(&mut self.return_value),
             MoveToReturn(from) => {
                 self.return_value = self.get(*from).clone();
             }
@@ -72,10 +70,13 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             BinaryOperation(binary_op) => {
                 self.return_value = binary_op.apply_2(&self.return_value, &self.right_operand);
             }
+            SetReturnRaw(raw_v) => self.return_value = raw_v.clone(),
+            SetRightOperandRaw(raw_v) => self.right_operand = raw_v.clone(),
+
         }
     }
 
-    fn run(&mut self) {
+    pub fn run(&mut self) {
         while self.instruction < self.instructions.len() {
             self.execute(self.instruction);
             self.instruction += 1;

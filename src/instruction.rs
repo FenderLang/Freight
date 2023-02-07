@@ -14,6 +14,8 @@ pub enum Instruction<TS: TypeSystem> {
     ReturnConstant(TS::Value),
     UnaryOperation(TS::UnaryOp),
     BinaryOperation(TS::BinaryOp),
+    SetReturnRaw(TS::Value),
+    SetRightOperandRaw(TS::Value),
 }
 
 impl<TS: TypeSystem> Debug for Instruction<TS> {
@@ -35,6 +37,10 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
             Self::ReturnConstant(arg0) => f.debug_tuple("ReturnConstant").field(arg0).finish(),
             Self::UnaryOperation(arg0) => f.debug_tuple("UnaryOperation").field(arg0).finish(),
             Self::BinaryOperation(arg0) => f.debug_tuple("BinaryOperation").field(arg0).finish(),
+            Self::SetReturnRaw(arg0) => f.debug_tuple("SetReturnRaw").field(arg0).finish(),
+            Self::SetRightOperandRaw(arg0) => {
+                f.debug_tuple("SetRightOperandRaw").field(arg0).finish()
+            }
         }
     }
 }
