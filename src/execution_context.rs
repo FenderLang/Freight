@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use crate::{instruction::Instruction, BinaryOperator, TypeSystem, UnaryOperator};
 
+pub const HELD_VALUE_LOCATION: usize = 0;
+
 #[derive(Debug)]
 pub struct ExecutionContext<TS: TypeSystem> {
     stack: Vec<TS::Value>,
@@ -30,6 +32,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
 
     fn get(&self, offset: usize) -> &TS::Value {
         &self.stack[self.frame + offset]
+    }
+
+    fn set(&mut self, offset: usize, value: TS::Value) {
+        self.stack[self.frame + offset] = value;
     }
 
     fn get_mut(&mut self, offset: usize) -> &mut TS::Value {
@@ -77,7 +83,15 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             PushRaw(value) => self.stack.push(value.clone()),
             Pop => self.popped_value = self.stack.pop(),
             Push(from) => self.stack.push(self.get(*from).clone()),
-            PushFromReturn => self.stack.push( self.return_value.clone()),
+            PushFromReturn => self.stack.push(self.return_value.clone()),
+            UnaryOperationWithHeld(unary_op) => {
+                self.return_value = unary_op.apply_1(&self.get(HELD_VALUE_LOCATION))
+            }
+            BinaryOperationWithHeld(binary_op) => {
+                self.return_value =
+                    binary_op.apply_2(&self.get(HELD_VALUE_LOCATION), &self.right_operand)
+            }
+            SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
         }
     }
 
@@ -86,10 +100,5 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             self.execute(self.instruction);
             self.instruction += 1;
         }
-    }
-
-    pub fn get_expression_tmp_value_location(&self) -> usize {
-        // TODO: @Redempt
-        todo!()
     }
 }
