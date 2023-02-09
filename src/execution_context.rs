@@ -11,6 +11,7 @@ pub struct ExecutionContext<TS: TypeSystem> {
     frame: usize,
     return_value: TS::Value,
     right_operand: TS::Value,
+    popped_value: Option<TS::Value>,
 }
 
 impl<TS: TypeSystem> ExecutionContext<TS> {
@@ -23,6 +24,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             frame: 0,
             return_value: Default::default(),
             right_operand: Default::default(),
+            popped_value: Default::default(),
         }
     }
 
@@ -47,11 +49,11 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             MoveRightOperand(from) => {
                 self.right_operand = self.get(*from).clone();
             }
-            Invoke(args, stack_size, instruction) => {
+            Invoke(arg_count, stack_size, instruction) => {
                 self.frames.push(self.frame);
-                self.frame -= args;
+                self.frame -= arg_count;
                 self.instruction = *instruction;
-                for _ in 0..stack_size - args {
+                for _ in 0..stack_size - arg_count {
                     self.stack.push(Default::default());
                 }
             }
@@ -72,7 +74,9 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             SetReturnRaw(raw_v) => self.return_value = raw_v.clone(),
             SetRightOperandRaw(raw_v) => self.right_operand = raw_v.clone(),
-
+            PushRaw(value) => self.stack.push(value.clone()),
+            Pop() => self.popped_value = self.stack.pop(),
+            Push(from) => self.stack.push(self.get(*from).clone()),
         }
     }
 
@@ -81,5 +85,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             self.execute(self.instruction);
             self.instruction += 1;
         }
+    }
+
+    pub fn get_expresion_tmp_value_location() -> usize {
+        // TODO: @Redempt
+        todo!()
     }
 }

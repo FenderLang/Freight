@@ -1,9 +1,16 @@
-use crate::{instruction::Instruction, operators::Operator, TypeSystem};
+use crate::{
+    execution_context::ExecutionContext, function::Function, instruction::Instruction,
+    operators::Operator, TypeSystem,
+};
 
 #[derive(Clone)]
 
 pub enum Operand<TS: TypeSystem> {
-    Function(usize, Vec<Operand<TS>>),
+    Function {
+        addr: usize,
+        args: Vec<Operand<TS>>,
+        stack_size: usize,
+    },
     ValueRef(usize),
     ValueRaw(TS::Value),
 }
@@ -44,23 +51,91 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
         self
     }
 
-    pub fn build(self) -> Vec<Instruction<TS>> {
+    fn build_function(
+        execution_context: &mut ExecutionContext<TS>,
+        function_addr: usize,
+        args: Vec<Operand<TS>>,
+        stack_size: usize,
+    ) -> Vec<Instruction<TS>> {
         let mut instructions = Vec::new();
+        let arg_count = args.len();
+        for arg in args {
+            match arg {
+                Operand::Function {
+                    addr,
+                    args,
+                    stack_size,
+                } => instructions.append(&mut ExpressionBuilder::build_function(
+                    execution_context,
+                    addr,
+                    args,
+                    stack_size,
+                )),
+                Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
+                Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
+            }
+        }
+        instructions.push(Instruction::Invoke(function_addr, arg_count, stack_size));
+        instructions
+    }
+
+    pub fn build(mut self, execution_context: &mut ExecutionContext<TS>) -> Vec<Instruction<TS>> {
+        let mut instructions = Vec::new();
+
+        if let Some(Operand::Function {
+            addr,
+            args,
+            stack_size,
+        }) = &mut self.operands.1
+        {
+            ExpressionBuilder::build_function(
+                execution_context,
+                *addr,
+                args.drain(0..).collect(),
+                *stack_size,
+            );
+        }
+
+        // if let Some(operand) = self.operands.1 {
+        //     match operand {
+        //         Operand::Function(function_addr, args) => {
+        //             ExpressionBuilder::build_function(execution_context, function_addr, args)
+        //         }
+        //         Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr)),
+        //         Operand::ValueRaw(val) => instructions.push(Instruction::SetReturnRaw(val)),
+        //     }
+        // }
 
         if let Some(operand) = self.operands.0 {
             match operand {
-                Operand::Function(function_addr, args) => todo!(),
+                Operand::Function {
+                    addr,
+                    args,
+                    stack_size,
+                } => instructions.append(&mut ExpressionBuilder::build_function(
+                    execution_context,
+                    addr,
+                    args,
+                    stack_size,
+                )),
+
                 Operand::ValueRef(addr) => instructions.push(Instruction::MoveToReturn(addr)),
                 Operand::ValueRaw(val) => instructions.push(Instruction::SetReturnRaw(val)),
             }
         }
+
         if let Some(operand) = self.operands.1 {
             match operand {
-                Operand::Function(function_addr, args) => todo!(),
-                Operand::ValueRef(addr) => instructions.push(Instruction::MoveToReturn(addr)),
-                Operand::ValueRaw(val) => instructions.push(Instruction::SetReturnRaw(val)),
+                Operand::Function {
+                    addr: _,
+                    args: _,
+                    stack_size: _,
+                } => (),
+                Operand::ValueRef(addr) => instructions.push(Instruction::MoveRightOperand(addr)),
+                Operand::ValueRaw(val) => instructions.push(Instruction::SetRightOperandRaw(val)),
             }
         }
+
         if let Some(op) = self.operator {
             match op {
                 Operator::Binary(b_op) => instructions.push(Instruction::BinaryOperation(b_op)),
