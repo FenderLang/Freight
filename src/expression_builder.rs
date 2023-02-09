@@ -127,7 +127,9 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                     addr: _,
                     args: _,
                     stack_size: _,
-                } => (),
+                } => instructions.push(Instruction::MoveRightOperand(
+                    execution_context.get_expression_tmp_value_location(),
+                )),
                 Operand::ValueRef(addr) => instructions.push(Instruction::MoveRightOperand(addr)),
                 Operand::ValueRaw(val) => instructions.push(Instruction::SetRightOperandRaw(val)),
             }
