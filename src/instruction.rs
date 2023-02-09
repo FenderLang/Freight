@@ -18,7 +18,8 @@ pub enum Instruction<TS: TypeSystem> {
     SetRightOperandRaw(TS::Value),
     PushRaw(TS::Value),
     Push(usize),
-    Pop(),
+    Pop,
+    PushFromReturn,
 }
 
 impl<TS: TypeSystem> Debug for Instruction<TS> {
@@ -45,8 +46,9 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
                 f.debug_tuple("SetRightOperandRaw").field(arg0).finish()
             }
             Instruction::Push(_) => todo!(),
-            Instruction::Pop() => todo!(),
+            Instruction::Pop => todo!(),
             Instruction::PushRaw(_) => todo!(),
+            Instruction::PushFromReturn => todo!(),
         }
     }
 }

@@ -75,8 +75,9 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             SetReturnRaw(raw_v) => self.return_value = raw_v.clone(),
             SetRightOperandRaw(raw_v) => self.right_operand = raw_v.clone(),
             PushRaw(value) => self.stack.push(value.clone()),
-            Pop() => self.popped_value = self.stack.pop(),
+            Pop => self.popped_value = self.stack.pop(),
             Push(from) => self.stack.push(self.get(*from).clone()),
+            PushFromReturn => self.stack.push( self.return_value.clone()),
         }
     }
 
@@ -87,7 +88,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         }
     }
 
-    pub fn get_expresion_tmp_value_location() -> usize {
+    pub fn get_expression_tmp_value_location(&self) -> usize {
         // TODO: @Redempt
         todo!()
     }

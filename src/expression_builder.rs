@@ -1,6 +1,5 @@
 use crate::{
-    execution_context::ExecutionContext, function::Function, instruction::Instruction,
-    operators::Operator, TypeSystem,
+    execution_context::ExecutionContext, instruction::Instruction, operators::Operator, TypeSystem,
 };
 
 #[derive(Clone)]
@@ -52,12 +51,12 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
     }
 
     fn build_function(
+        instructions: &mut Vec<Instruction<TS>>,
         execution_context: &mut ExecutionContext<TS>,
         function_addr: usize,
         args: Vec<Operand<TS>>,
         stack_size: usize,
-    ) -> Vec<Instruction<TS>> {
-        let mut instructions = Vec::new();
+    ) {
         let arg_count = args.len();
         for arg in args {
             match arg {
@@ -65,18 +64,21 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                     addr,
                     args,
                     stack_size,
-                } => instructions.append(&mut ExpressionBuilder::build_function(
-                    execution_context,
-                    addr,
-                    args,
-                    stack_size,
-                )),
+                } => {
+                    ExpressionBuilder::build_function(
+                        instructions,
+                        execution_context,
+                        addr,
+                        args,
+                        stack_size,
+                    );
+                    instructions.push(Instruction::PushFromReturn);
+                }
                 Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
                 Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
             }
         }
         instructions.push(Instruction::Invoke(function_addr, arg_count, stack_size));
-        instructions
     }
 
     pub fn build(mut self, execution_context: &mut ExecutionContext<TS>) -> Vec<Instruction<TS>> {
@@ -89,22 +91,16 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
         }) = &mut self.operands.1
         {
             ExpressionBuilder::build_function(
+                &mut instructions,
                 execution_context,
                 *addr,
                 args.drain(0..).collect(),
                 *stack_size,
             );
+            instructions.push(Instruction::MoveFromReturn(
+                execution_context.get_expression_tmp_value_location(),
+            ))
         }
-
-        // if let Some(operand) = self.operands.1 {
-        //     match operand {
-        //         Operand::Function(function_addr, args) => {
-        //             ExpressionBuilder::build_function(execution_context, function_addr, args)
-        //         }
-        //         Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr)),
-        //         Operand::ValueRaw(val) => instructions.push(Instruction::SetReturnRaw(val)),
-        //     }
-        // }
 
         if let Some(operand) = self.operands.0 {
             match operand {
@@ -112,12 +108,13 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                     addr,
                     args,
                     stack_size,
-                } => instructions.append(&mut ExpressionBuilder::build_function(
+                } => ExpressionBuilder::build_function(
+                    &mut instructions,
                     execution_context,
                     addr,
                     args,
                     stack_size,
-                )),
+                ),
 
                 Operand::ValueRef(addr) => instructions.push(Instruction::MoveToReturn(addr)),
                 Operand::ValueRaw(val) => instructions.push(Instruction::SetReturnRaw(val)),
