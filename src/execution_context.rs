@@ -89,7 +89,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             BinaryOperationWithHeld(binary_op) => {
                 self.return_value =
-                    binary_op.apply_2(&self.get(HELD_VALUE_LOCATION), &self.right_operand)
+                    binary_op.apply_2(self.get(HELD_VALUE_LOCATION), &self.right_operand)
             }
             SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
         }
