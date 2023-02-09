@@ -113,7 +113,7 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                 }
                 Operand::ValueRaw(val) => instructions.push(Instruction::SetHeldRaw(val)),
                 Operand::Expression(builder) => {
-                    builder.build(execution_context);
+                    instructions.append(&mut builder.build(execution_context));
                     instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
                 }
             }
