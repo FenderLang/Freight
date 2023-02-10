@@ -1,7 +1,12 @@
+use crate::{
+    execution_context::register_ids::RegisterId, instruction::Instruction, BinaryOperator,
+    TypeSystem, UnaryOperator,
+};
 use std::fmt::Debug;
 
-use crate::{instruction::Instruction, BinaryOperator, TypeSystem, UnaryOperator};
+pub mod register_ids;
 
+/// Location in stack of the temporary held value used by the expression builder.
 pub const HELD_VALUE_LOCATION: usize = 0;
 
 #[derive(Debug)]
@@ -11,9 +16,8 @@ pub struct ExecutionContext<TS: TypeSystem> {
     instruction: usize,
     frames: Vec<usize>,
     frame: usize,
-    return_value: TS::Value,
-    right_operand: TS::Value,
-    popped_value: Option<TS::Value>,
+
+    registers: [TS::Value; 3],
 }
 
 impl<TS: TypeSystem> ExecutionContext<TS> {
@@ -24,9 +28,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             instruction: 0,
             frames: vec![],
             frame: 0,
-            return_value: Default::default(),
-            right_operand: Default::default(),
-            popped_value: Default::default(),
+            registers: Default::default(),
         }
     }
 
@@ -48,12 +50,15 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         match instruction {
             Create(offset, creator) => *self.get_mut(*offset) = creator(self),
             Move(from, to) => *self.get_mut(*to) = self.get(*from).clone(),
-            MoveFromReturn(to) => *self.get_mut(*to) = std::mem::take(&mut self.return_value),
+            MoveFromReturn(to) => {
+                *self.get_mut(*to) = std::mem::take(&mut self.registers[RegisterId::Return.id()])
+            }
             MoveToReturn(from) => {
-                self.return_value = self.get(*from).clone();
+                self.registers[RegisterId::Return.id()] = self.get(*from).clone();
+                // self.return_value = self.get(*from).clone();
             }
             MoveRightOperand(from) => {
-                self.right_operand = self.get(*from).clone();
+                self.registers[RegisterId::RightOperand.id()] = self.get(*from).clone();
             }
             Invoke(arg_count, stack_size, instruction) => {
                 self.frames.push(self.frame);
@@ -63,33 +68,49 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                     self.stack.push(Default::default());
                 }
             }
-            InvokeNative(func) => self.return_value = func(self),
+            InvokeNative(func) => self.registers[RegisterId::Return.id()] = func(self),
             Return(offset) => {
-                self.return_value = self.get(*offset).clone();
+                self.registers[RegisterId::Return.id()] = self.get(*offset).clone();
                 self.frame = self.frames.pop().unwrap();
             }
             ReturnConstant(c) => {
-                self.return_value = c.clone();
+                self.registers[RegisterId::Return.id()] = c.clone();
                 self.frame = self.frames.pop().unwrap();
             }
             UnaryOperation(unary_op) => {
-                self.return_value = unary_op.apply_1(&self.return_value);
+                self.registers[RegisterId::Return.id()] =
+                    unary_op.apply_1(&self.registers[RegisterId::Return.id()]);
             }
             BinaryOperation(binary_op) => {
-                self.return_value = binary_op.apply_2(&self.return_value, &self.right_operand);
+                self.registers[RegisterId::Return.id()] = binary_op.apply_2(
+                    &self.registers[RegisterId::Return.id()],
+                    &self.registers[RegisterId::RightOperand.id()],
+                );
             }
-            SetReturnRaw(raw_v) => self.return_value = raw_v.clone(),
-            SetRightOperandRaw(raw_v) => self.right_operand = raw_v.clone(),
+            SetReturnRaw(raw_v) => self.registers[RegisterId::Return.id()] = raw_v.clone(),
+            SetRightOperandRaw(raw_v) => {
+                self.registers[RegisterId::RightOperand.id()] = raw_v.clone()
+            }
             PushRaw(value) => self.stack.push(value.clone()),
-            Pop => self.popped_value = self.stack.pop(),
+            #[cfg(feature="popped_register")]
+            Pop => self.registers[RegisterId::Popped.id()] = self.stack.pop().unwrap_or_default(),
+            #[cfg(not(feature="popped_register"))]
+            Pop => self.registers[RegisterId::Return.id()] = self.stack.pop().unwrap_or_default(),
+
+
             Push(from) => self.stack.push(self.get(*from).clone()),
-            PushFromReturn => self.stack.push(self.return_value.clone()),
+            PushFromReturn => self
+                .stack
+                .push(self.registers[RegisterId::Return.id()].clone()),
             UnaryOperationWithHeld(unary_op) => {
-                self.return_value = unary_op.apply_1(&self.get(HELD_VALUE_LOCATION))
+                self.registers[RegisterId::Return.id()] =
+                    unary_op.apply_1(&self.get(HELD_VALUE_LOCATION))
             }
             BinaryOperationWithHeld(binary_op) => {
-                self.return_value =
-                    binary_op.apply_2(self.get(HELD_VALUE_LOCATION), &self.right_operand)
+                self.registers[RegisterId::Return.id()] = binary_op.apply_2(
+                    self.get(HELD_VALUE_LOCATION),
+                    &self.registers[RegisterId::RightOperand.id()],
+                )
             }
             SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
         }
