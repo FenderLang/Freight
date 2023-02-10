@@ -17,11 +17,26 @@ pub enum Operand<TS: TypeSystem> {
     Expression(Box<ExpressionBuilder<TS>>),
 }
 
+pub enum Expression<TS: TypeSystem> {
+    UnaryExpression {
+        operand: Operand<TS>,
+        operator: TS::UnaryOp,
+    },
+    BinaryExpression {
+        operator: TS::BinaryOp,
+        right_operand: Operand<TS>,
+        left_operand: Operand<TS>,
+    },
+    SingleElementExpression(Operand<TS>),
+}
+
 #[derive(Default, Clone, Debug)]
 pub struct ExpressionBuilder<TS: TypeSystem> {
     operator: Option<Operator<TS>>,
     operands: (Option<Operand<TS>>, Option<Operand<TS>>),
 }
+
+
 
 impl<TS: TypeSystem> ExpressionBuilder<TS> {
     /// Construct a unary expression to either call build on or to be passed to a larger expression.
@@ -54,7 +69,6 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
 
     fn expand_function_call_instructions(
         instructions: &mut Vec<Instruction<TS>>,
-        execution_context: &mut ExecutionContext<TS>,
         function_addr: usize,
         args: Vec<Operand<TS>>,
         stack_size: usize,
@@ -69,7 +83,6 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                 } => {
                     ExpressionBuilder::expand_function_call_instructions(
                         instructions,
-                        execution_context,
                         addr,
                         args,
                         stack_size,
@@ -78,15 +91,13 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                 }
                 Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
                 Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
-                Operand::Expression(builder) => {
-                    instructions.append(&mut builder.build(execution_context))
-                }
+                Operand::Expression(builder) => instructions.append(&mut builder.build()),
             }
         }
         instructions.push(Instruction::Invoke(function_addr, arg_count, stack_size));
     }
 
-    pub fn build(self, execution_context: &mut ExecutionContext<TS>) -> Vec<Instruction<TS>> {
+    pub fn build(self) -> Vec<Instruction<TS>> {
         let mut instructions = Vec::new();
 
         if let Some(operand) = self.operands.0 {
@@ -98,7 +109,6 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                 } => {
                     ExpressionBuilder::expand_function_call_instructions(
                         &mut instructions,
-                        execution_context,
                         addr,
                         args,
                         stack_size,
@@ -110,7 +120,7 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                 }
                 Operand::ValueRaw(val) => instructions.push(Instruction::SetHeldRaw(val)),
                 Operand::Expression(builder) => {
-                    instructions.append(&mut builder.build(execution_context));
+                    instructions.append(&mut builder.build());
                     instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
                 }
             }
@@ -125,14 +135,13 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                 } => {
                     ExpressionBuilder::expand_function_call_instructions(
                         &mut instructions,
-                        execution_context,
                         addr,
                         args,
                         stack_size,
                     );
                 }
                 Operand::Expression(builder) => {
-                    instructions.append(&mut builder.build(execution_context));
+                    instructions.append(&mut builder.build());
                     instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
                 }
                 Operand::ValueRef(addr) => instructions.push(Instruction::MoveRightOperand(addr)),
