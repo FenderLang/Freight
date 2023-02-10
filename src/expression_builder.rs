@@ -5,7 +5,7 @@ use crate::{
     TypeSystem,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Operand<TS: TypeSystem> {
     Function {
         addr: usize,
@@ -17,45 +17,42 @@ pub enum Operand<TS: TypeSystem> {
     Expression(Box<ExpressionBuilder<TS>>),
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct ExpressionBuilder<TS: TypeSystem> {
     operator: Option<Operator<TS>>,
     operands: (Option<Operand<TS>>, Option<Operand<TS>>),
 }
 
 impl<TS: TypeSystem> ExpressionBuilder<TS> {
-    pub fn new() -> ExpressionBuilder<TS> {
+    /// Construct a unary expression to either call build on or to be passed to a larger expression.
+    pub fn unary_expression(operand: Operand<TS>, operator: TS::UnaryOp) -> ExpressionBuilder<TS> {
+        ExpressionBuilder {
+            operands: (Some(operand), None),
+            operator: Some(Operator::Unary(operator)),
+        }
+    }
+
+    /// Construct a unary expression to either call build on or to be passed to a larger expression.
+    pub fn binary_expression(
+        operator: TS::BinaryOp,
+        right_operand: Operand<TS>,
+        left_operand: Operand<TS>,
+    ) -> ExpressionBuilder<TS> {
+        ExpressionBuilder {
+            operands: (Some(right_operand), Some(left_operand)),
+            operator: Some(Operator::Binary(operator)),
+        }
+    }
+
+    /// Encapsulate a single operand in an expression.
+    pub fn single_value_expression(value: Operand<TS>) -> ExpressionBuilder<TS> {
         ExpressionBuilder {
             operator: None,
-            operands: (None, None),
+            operands: (Some(value), None),
         }
     }
 
-    pub fn set_value(&mut self, value: Operand<TS>) -> &mut ExpressionBuilder<TS> {
-        match &self.operands {
-            (None, _) => self.operands.0 = Some(value),
-            (Some(_), None) => self.operands.1 = Some(value),
-            _ => (),
-        }
-        self
-    }
-
-    pub fn set_left_operand(&mut self, value: Operand<TS>) -> &mut ExpressionBuilder<TS> {
-        self.operands.0 = Some(value);
-        self
-    }
-
-    pub fn set_right_operand(&mut self, value: Operand<TS>) -> &mut ExpressionBuilder<TS> {
-        self.operands.1 = Some(value);
-        self
-    }
-
-    pub fn set_operator(&mut self, operator: Operator<TS>) -> &mut ExpressionBuilder<TS> {
-        self.operator = Some(operator);
-        self
-    }
-
-    fn build_function(
+    fn expand_function_call_instructions(
         instructions: &mut Vec<Instruction<TS>>,
         execution_context: &mut ExecutionContext<TS>,
         function_addr: usize,
@@ -70,7 +67,7 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                     args,
                     stack_size,
                 } => {
-                    ExpressionBuilder::build_function(
+                    ExpressionBuilder::expand_function_call_instructions(
                         instructions,
                         execution_context,
                         addr,
@@ -99,7 +96,7 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                     args,
                     stack_size,
                 } => {
-                    ExpressionBuilder::build_function(
+                    ExpressionBuilder::expand_function_call_instructions(
                         &mut instructions,
                         execution_context,
                         addr,
@@ -126,7 +123,7 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
                     args,
                     stack_size,
                 } => {
-                    ExpressionBuilder::build_function(
+                    ExpressionBuilder::expand_function_call_instructions(
                         &mut instructions,
                         execution_context,
                         addr,
@@ -143,15 +140,14 @@ impl<TS: TypeSystem> ExpressionBuilder<TS> {
             }
         }
 
-        if let Some(op) = self.operator {
-            match op {
-                Operator::Binary(b_op) => {
-                    instructions.push(Instruction::BinaryOperationWithHeld(b_op))
-                }
-                Operator::Unary(u_op) => {
-                    instructions.push(Instruction::UnaryOperationWithHeld(u_op))
-                }
+        match self.operator {
+            Some(Operator::Binary(b_op)) => {
+                instructions.push(Instruction::BinaryOperationWithHeld(b_op))
             }
+            Some(Operator::Unary(u_op)) => {
+                instructions.push(Instruction::UnaryOperationWithHeld(u_op))
+            }
+            None => (),
         }
 
         instructions
