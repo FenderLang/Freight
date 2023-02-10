@@ -14,16 +14,19 @@ pub enum Operand<TS: TypeSystem> {
 
 #[derive(Clone, Debug)]
 pub enum Expression<TS: TypeSystem> {
-    UnaryExpression {
+    /// Construct a unary operation expression. This can be passed to a larger expression or call `build()` to turn into a list of `Instruction`s.
+    UnaryOpEval {
         operand: Operand<TS>,
         operator: TS::UnaryOp,
     },
-    BinaryExpression {
+    /// Construct a unary Binary expression. This can be passed to a larger expression or call `build()` to turn into a list of `Instruction`s.
+    BinaryOpEval {
         operator: TS::BinaryOp,
         right_operand: Operand<TS>,
         left_operand: Operand<TS>,
     },
-    SingleElementExpression(Operand<TS>),
+    /// Encapsulate a single operand in an expression
+    Eval(Operand<TS>),
 }
 
 fn expand_function_call_instructions<TS: TypeSystem>(
@@ -99,11 +102,11 @@ impl<TS: TypeSystem> Expression<TS> {
         let mut instructions = Vec::new();
 
         match self {
-            Expression::UnaryExpression { operand, operator } => {
+            Expression::UnaryOpEval { operand, operator } => {
                 expand_first_operand_instructions(operand, &mut instructions);
                 instructions.push(Instruction::UnaryOperation(operator));
             }
-            Expression::BinaryExpression {
+            Expression::BinaryOpEval {
                 operator,
                 right_operand,
                 left_operand,
@@ -112,7 +115,7 @@ impl<TS: TypeSystem> Expression<TS> {
                 expand_second_operand_instructions(right_operand, &mut instructions);
                 instructions.push(Instruction::BinaryOperationWithHeld(operator));
             }
-            Expression::SingleElementExpression(operand) => {
+            Expression::Eval(operand) => {
                 expand_first_operand_instructions(operand, &mut instructions)
             }
         }
