@@ -1,9 +1,4 @@
-use crate::{
-    execution_context::{ExecutionContext, HELD_VALUE_LOCATION},
-    instruction::Instruction,
-    operators::Operator,
-    TypeSystem,
-};
+use crate::{execution_context::HELD_VALUE_LOCATION, instruction::Instruction, TypeSystem};
 
 #[derive(Clone, Debug)]
 pub enum Operand<TS: TypeSystem> {
@@ -14,9 +9,10 @@ pub enum Operand<TS: TypeSystem> {
     },
     ValueRef(usize),
     ValueRaw(TS::Value),
-    Expression(Box<ExpressionBuilder<TS>>),
+    Expression(Box<Expression<TS>>),
 }
 
+#[derive(Clone, Debug)]
 pub enum Expression<TS: TypeSystem> {
     UnaryExpression {
         operand: Operand<TS>,
@@ -30,135 +26,96 @@ pub enum Expression<TS: TypeSystem> {
     SingleElementExpression(Operand<TS>),
 }
 
-#[derive(Default, Clone, Debug)]
-pub struct ExpressionBuilder<TS: TypeSystem> {
-    operator: Option<Operator<TS>>,
-    operands: (Option<Operand<TS>>, Option<Operand<TS>>),
+fn expand_function_call_instructions<TS: TypeSystem>(
+    instructions: &mut Vec<Instruction<TS>>,
+    function_addr: usize,
+    args: Vec<Operand<TS>>,
+    stack_size: usize,
+) {
+    let arg_count = args.len();
+    for arg in args {
+        match arg {
+            Operand::Function {
+                addr,
+                args,
+                stack_size,
+            } => {
+                expand_function_call_instructions(instructions, addr, args, stack_size);
+                instructions.push(Instruction::PushFromReturn);
+            }
+            Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
+            Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
+            Operand::Expression(builder) => instructions.append(&mut builder.build_instructions()),
+        }
+    }
+    instructions.push(Instruction::Invoke(function_addr, arg_count, stack_size));
 }
 
-
-
-impl<TS: TypeSystem> ExpressionBuilder<TS> {
-    /// Construct a unary expression to either call build on or to be passed to a larger expression.
-    pub fn unary_expression(operand: Operand<TS>, operator: TS::UnaryOp) -> ExpressionBuilder<TS> {
-        ExpressionBuilder {
-            operands: (Some(operand), None),
-            operator: Some(Operator::Unary(operator)),
+fn expand_first_operand_instructions<TS: TypeSystem>(
+    operand: Operand<TS>,
+    instructions: &mut Vec<Instruction<TS>>,
+) {
+    match operand {
+        Operand::Function {
+            addr,
+            args,
+            stack_size,
+        } => {
+            expand_function_call_instructions(instructions, addr, args, stack_size);
+            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
+        }
+        Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr, HELD_VALUE_LOCATION)),
+        Operand::ValueRaw(val) => instructions.push(Instruction::SetHeldRaw(val)),
+        Operand::Expression(builder) => {
+            instructions.append(&mut builder.build_instructions());
+            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
         }
     }
+}
 
-    /// Construct a unary expression to either call build on or to be passed to a larger expression.
-    pub fn binary_expression(
-        operator: TS::BinaryOp,
-        right_operand: Operand<TS>,
-        left_operand: Operand<TS>,
-    ) -> ExpressionBuilder<TS> {
-        ExpressionBuilder {
-            operands: (Some(right_operand), Some(left_operand)),
-            operator: Some(Operator::Binary(operator)),
+fn expand_second_operand_instructions<TS: TypeSystem>(
+    operand: Operand<TS>,
+    instructions: &mut Vec<Instruction<TS>>,
+) {
+    match operand {
+        Operand::Function {
+            addr,
+            args,
+            stack_size,
+        } => {
+            expand_function_call_instructions(instructions, addr, args, stack_size);
         }
-    }
-
-    /// Encapsulate a single operand in an expression.
-    pub fn single_value_expression(value: Operand<TS>) -> ExpressionBuilder<TS> {
-        ExpressionBuilder {
-            operator: None,
-            operands: (Some(value), None),
+        Operand::Expression(builder) => {
+            instructions.append(&mut builder.build_instructions());
+            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
         }
+        Operand::ValueRef(addr) => instructions.push(Instruction::MoveRightOperand(addr)),
+        Operand::ValueRaw(val) => instructions.push(Instruction::SetRightOperandRaw(val)),
     }
+}
 
-    fn expand_function_call_instructions(
-        instructions: &mut Vec<Instruction<TS>>,
-        function_addr: usize,
-        args: Vec<Operand<TS>>,
-        stack_size: usize,
-    ) {
-        let arg_count = args.len();
-        for arg in args {
-            match arg {
-                Operand::Function {
-                    addr,
-                    args,
-                    stack_size,
-                } => {
-                    ExpressionBuilder::expand_function_call_instructions(
-                        instructions,
-                        addr,
-                        args,
-                        stack_size,
-                    );
-                    instructions.push(Instruction::PushFromReturn);
-                }
-                Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
-                Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
-                Operand::Expression(builder) => instructions.append(&mut builder.build()),
-            }
-        }
-        instructions.push(Instruction::Invoke(function_addr, arg_count, stack_size));
-    }
-
-    pub fn build(self) -> Vec<Instruction<TS>> {
+impl<TS: TypeSystem> Expression<TS> {
+    pub fn build_instructions(self) -> Vec<Instruction<TS>> {
         let mut instructions = Vec::new();
 
-        if let Some(operand) = self.operands.0 {
-            match operand {
-                Operand::Function {
-                    addr,
-                    args,
-                    stack_size,
-                } => {
-                    ExpressionBuilder::expand_function_call_instructions(
-                        &mut instructions,
-                        addr,
-                        args,
-                        stack_size,
-                    );
-                    instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
-                }
-                Operand::ValueRef(addr) => {
-                    instructions.push(Instruction::Move(addr, HELD_VALUE_LOCATION))
-                }
-                Operand::ValueRaw(val) => instructions.push(Instruction::SetHeldRaw(val)),
-                Operand::Expression(builder) => {
-                    instructions.append(&mut builder.build());
-                    instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
-                }
+        match self {
+            Expression::UnaryExpression { operand, operator } => {
+                expand_first_operand_instructions(operand, &mut instructions);
+                instructions.push(Instruction::UnaryOperation(operator));
+            }
+            Expression::BinaryExpression {
+                operator,
+                right_operand,
+                left_operand,
+            } => {
+                expand_first_operand_instructions(left_operand, &mut instructions);
+                expand_second_operand_instructions(right_operand, &mut instructions);
+                instructions.push(Instruction::BinaryOperationWithHeld(operator));
+            }
+            Expression::SingleElementExpression(operand) => {
+                expand_first_operand_instructions(operand, &mut instructions)
             }
         }
-
-        if let Some(operand) = self.operands.1 {
-            match operand {
-                Operand::Function {
-                    addr,
-                    args,
-                    stack_size,
-                } => {
-                    ExpressionBuilder::expand_function_call_instructions(
-                        &mut instructions,
-                        addr,
-                        args,
-                        stack_size,
-                    );
-                }
-                Operand::Expression(builder) => {
-                    instructions.append(&mut builder.build());
-                    instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
-                }
-                Operand::ValueRef(addr) => instructions.push(Instruction::MoveRightOperand(addr)),
-                Operand::ValueRaw(val) => instructions.push(Instruction::SetRightOperandRaw(val)),
-            }
-        }
-
-        match self.operator {
-            Some(Operator::Binary(b_op)) => {
-                instructions.push(Instruction::BinaryOperationWithHeld(b_op))
-            }
-            Some(Operator::Unary(u_op)) => {
-                instructions.push(Instruction::UnaryOperationWithHeld(u_op))
-            }
-            None => (),
-        }
-
         instructions
     }
 }
