@@ -47,7 +47,7 @@ fn expand_function_call_instructions<TS: TypeSystem>(
     for arg in args {
         match arg {
             Operand::Function { function, args } => {
-                expand_function_call_instructions(instructions, &function, args);
+                expand_function_call_instructions(instructions, &function, args)?;
                 instructions.push(Instruction::PushFromReturn);
             }
             Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
@@ -69,7 +69,7 @@ fn expand_first_operand_instructions<TS: TypeSystem>(
 ) -> Result<(), FreightError> {
     match operand {
         Operand::Function { function, args } => {
-            expand_function_call_instructions(instructions, &function, args);
+            expand_function_call_instructions(instructions, &function, args)?;
             instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
         }
         Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr, HELD_VALUE_LOCATION)),
@@ -88,7 +88,7 @@ fn expand_second_operand_instructions<TS: TypeSystem>(
 ) -> Result<(), FreightError> {
     match operand {
         Operand::Function { function, args } => {
-            expand_function_call_instructions(instructions, &function, args);
+            expand_function_call_instructions(instructions, &function, args)?;
         }
         Operand::Expression(builder) => {
             instructions.append(&mut builder.build_instructions()?);
@@ -106,7 +106,7 @@ impl<TS: TypeSystem> Expression<TS> {
 
         match self {
             Expression::UnaryOpEval { operand, operator } => {
-                expand_first_operand_instructions(operand, &mut instructions);
+                expand_first_operand_instructions(operand, &mut instructions)?;
                 instructions.push(Instruction::UnaryOperation(operator));
             }
             Expression::BinaryOpEval {
@@ -114,12 +114,12 @@ impl<TS: TypeSystem> Expression<TS> {
                 right_operand,
                 left_operand,
             } => {
-                expand_first_operand_instructions(left_operand, &mut instructions);
-                expand_second_operand_instructions(right_operand, &mut instructions);
+                expand_first_operand_instructions(left_operand, &mut instructions)?;
+                expand_second_operand_instructions(right_operand, &mut instructions)?;
                 instructions.push(Instruction::BinaryOperationWithHeld(operator));
             }
             Expression::Eval(operand) => {
-                expand_first_operand_instructions(operand, &mut instructions);
+                expand_first_operand_instructions(operand, &mut instructions)?;
                 instructions.push(Instruction::MoveToReturn(HELD_VALUE_LOCATION));
             }
         }

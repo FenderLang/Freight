@@ -1,4 +1,4 @@
-use crate::{expression::Expression, instruction::Instruction, TypeSystem};
+use crate::{expression::Expression, instruction::Instruction, TypeSystem, error::FreightError};
 
 #[derive(Debug)]
 pub struct FunctionBuilder<TS: TypeSystem> {
@@ -33,22 +33,25 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
         self.instructions.extend(instructions);
     }
 
-    pub fn assign_value(&mut self, var: usize, expr: Expression<TS>) {
-        self.evaluate_expression(expr);
+    pub fn assign_value(&mut self, var: usize, expr: Expression<TS>) -> Result<(), FreightError> {
+        self.evaluate_expression(expr)?;
         self.instructions.push(Instruction::MoveFromReturn(var));
+        Ok(())
     }
 
-    pub fn evaluate_expression(&mut self, expr: Expression<TS>) {
-        self.instructions.extend(expr.build_instructions());
+    pub fn evaluate_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {
+        self.instructions.extend(expr.build_instructions()?);
+        Ok(())
     }
 
     pub fn argument_stack_offset(&self, arg: usize) -> usize {
         arg + 1
     }
 
-    pub fn return_expression(&mut self, expr: Expression<TS>) {
-        self.evaluate_expression(expr);
+    pub fn return_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {
+        self.evaluate_expression(expr)?;
         self.instructions.push(Instruction::Return(self.stack_size));
+        Ok(())
     }
 
     pub fn build_instructions(mut self) -> Vec<Instruction<TS>> {
