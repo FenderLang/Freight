@@ -2,7 +2,7 @@ use operators::{binary::BinaryOperator, unary::UnaryOperator};
 use value::Value;
 
 pub mod execution_context;
-pub mod expression_builder;
+pub mod expression;
 pub mod function;
 pub mod instruction;
 pub mod value;

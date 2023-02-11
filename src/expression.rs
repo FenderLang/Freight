@@ -1,11 +1,10 @@
-use crate::{execution_context::HELD_VALUE_LOCATION, instruction::Instruction, TypeSystem};
+use crate::{instruction::Instruction, TypeSystem, function::FunctionRef};
 
 #[derive(Clone, Debug)]
 pub enum Operand<TS: TypeSystem> {
     Function {
-        addr: usize,
         args: Vec<Operand<TS>>,
-        stack_size: usize,
+        function: FunctionRef,
     },
     ValueRef(usize),
     ValueRaw(TS::Value),
@@ -31,47 +30,46 @@ pub enum Expression<TS: TypeSystem> {
 
 fn expand_function_call_instructions<TS: TypeSystem>(
     instructions: &mut Vec<Instruction<TS>>,
-    function_addr: usize,
+    function: &FunctionRef,
     args: Vec<Operand<TS>>,
-    stack_size: usize,
+    held_value_location: usize,
 ) {
     let arg_count = args.len();
     for arg in args {
         match arg {
             Operand::Function {
-                addr,
+                function,
                 args,
-                stack_size,
             } => {
-                expand_function_call_instructions(instructions, addr, args, stack_size);
+                expand_function_call_instructions(instructions, &function, args, held_value_location);
                 instructions.push(Instruction::PushFromReturn);
             }
             Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
             Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
-            Operand::Expression(builder) => instructions.append(&mut builder.build_instructions()),
+            Operand::Expression(builder) => instructions.append(&mut builder.build_instructions(held_value_location)),
         }
     }
-    instructions.push(Instruction::Invoke(function_addr, arg_count, stack_size));
+    instructions.push(Instruction::Invoke(function.location, arg_count, function.stack_size));
 }
 
 fn expand_first_operand_instructions<TS: TypeSystem>(
     operand: Operand<TS>,
     instructions: &mut Vec<Instruction<TS>>,
+    held_value_location: usize,
 ) {
     match operand {
         Operand::Function {
-            addr,
+            function,
             args,
-            stack_size,
         } => {
-            expand_function_call_instructions(instructions, addr, args, stack_size);
-            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
+            expand_function_call_instructions(instructions, &function, args, held_value_location);
+            instructions.push(Instruction::MoveFromReturn(held_value_location))
         }
-        Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr, HELD_VALUE_LOCATION)),
+        Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr, held_value_location)),
         Operand::ValueRaw(val) => instructions.push(Instruction::SetHeldRaw(val)),
         Operand::Expression(builder) => {
-            instructions.append(&mut builder.build_instructions());
-            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
+            instructions.append(&mut builder.build_instructions(held_value_location));
+            instructions.push(Instruction::MoveFromReturn(held_value_location))
         }
     }
 }
@@ -79,18 +77,18 @@ fn expand_first_operand_instructions<TS: TypeSystem>(
 fn expand_second_operand_instructions<TS: TypeSystem>(
     operand: Operand<TS>,
     instructions: &mut Vec<Instruction<TS>>,
+    held_value_location: usize,
 ) {
     match operand {
         Operand::Function {
-            addr,
+            function,
             args,
-            stack_size,
         } => {
-            expand_function_call_instructions(instructions, addr, args, stack_size);
+            expand_function_call_instructions(instructions, &function, args, held_value_location);
         }
         Operand::Expression(builder) => {
-            instructions.append(&mut builder.build_instructions());
-            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
+            instructions.append(&mut builder.build_instructions(held_value_location));
+            instructions.push(Instruction::MoveFromReturn(held_value_location))
         }
         Operand::ValueRef(addr) => instructions.push(Instruction::MoveRightOperand(addr)),
         Operand::ValueRaw(val) => instructions.push(Instruction::SetRightOperandRaw(val)),
@@ -98,12 +96,12 @@ fn expand_second_operand_instructions<TS: TypeSystem>(
 }
 
 impl<TS: TypeSystem> Expression<TS> {
-    pub fn build_instructions(self) -> Vec<Instruction<TS>> {
+    pub fn build_instructions(self, held_value_location: usize) -> Vec<Instruction<TS>> {
         let mut instructions = Vec::new();
 
         match self {
             Expression::UnaryOpEval { operand, operator } => {
-                expand_first_operand_instructions(operand, &mut instructions);
+                expand_first_operand_instructions(operand, &mut instructions, held_value_location);
                 instructions.push(Instruction::UnaryOperation(operator));
             }
             Expression::BinaryOpEval {
@@ -111,12 +109,12 @@ impl<TS: TypeSystem> Expression<TS> {
                 right_operand,
                 left_operand,
             } => {
-                expand_first_operand_instructions(left_operand, &mut instructions);
-                expand_second_operand_instructions(right_operand, &mut instructions);
+                expand_first_operand_instructions(left_operand, &mut instructions, held_value_location);
+                expand_second_operand_instructions(right_operand, &mut instructions, held_value_location);
                 instructions.push(Instruction::BinaryOperationWithHeld(operator));
             }
             Expression::Eval(operand) => {
-                expand_first_operand_instructions(operand, &mut instructions)
+                expand_first_operand_instructions(operand, &mut instructions, held_value_location)
             }
         }
         instructions

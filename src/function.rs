@@ -1,4 +1,4 @@
-use crate::{expression_builder::Expression, instruction::Instruction, TypeSystem};
+use crate::{expression::Expression, instruction::Instruction, TypeSystem};
 
 #[derive(Debug)]
 pub struct FunctionBuilder<TS: TypeSystem> {
@@ -34,11 +34,15 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
     }
 
     pub fn evaluate_expression(&mut self, expr: Expression<TS>) {
-        self.instructions.extend(expr.build_instructions());
+        self.instructions.extend(expr.build_instructions(self.held_value_stack_offset()));
     }
 
-    pub fn argument_stack_location(&self, arg: usize) -> usize {
-        arg + 1
+    pub fn argument_stack_offset(&self, arg: usize) -> usize {
+        arg
+    }
+
+    pub fn held_value_stack_offset(&self) -> usize {
+        self.args
     }
 
     pub fn return_expression(&mut self, expr: Expression<TS>) {
