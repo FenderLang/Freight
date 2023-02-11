@@ -24,7 +24,6 @@ pub struct ExecutionContext<TS: TypeSystem> {
 
 impl<TS: TypeSystem> ExecutionContext<TS> {
     pub fn new(instructions: Vec<Instruction<TS>>, stack_size: usize, entry_point: usize) -> ExecutionContext<TS> {
-        dbg!(&instructions);
         ExecutionContext {
             stack: Vec::with_capacity(stack_size),
             initial_stack_size: stack_size,
@@ -63,11 +62,6 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
     pub fn execute(&mut self, index: usize) -> bool {
         use Instruction::*;
         let instruction = &self.instructions[index];
-        println!("\n--------------\n");
-        dbg!(index);
-        dbg!(instruction);
-        dbg!(&self.stack);
-        dbg!(&self.registers);
         let mut increment_index = true;
         match instruction {
             Create(offset, creator) => *self.get_mut(*offset) = creator(self),
