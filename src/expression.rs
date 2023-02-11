@@ -1,4 +1,7 @@
-use crate::{instruction::Instruction, TypeSystem, function::FunctionRef, execution_context::{ExecutionContext, self, HELD_VALUE_LOCATION}};
+use crate::{
+    execution_context::HELD_VALUE_LOCATION, function::FunctionRef, instruction::Instruction,
+    TypeSystem,
+};
 
 #[derive(Clone, Debug)]
 pub enum Operand<TS: TypeSystem> {
@@ -37,10 +40,7 @@ fn expand_function_call_instructions<TS: TypeSystem>(
     let arg_count = args.len();
     for arg in args {
         match arg {
-            Operand::Function {
-                function,
-                args,
-            } => {
+            Operand::Function { function, args } => {
                 expand_function_call_instructions(instructions, &function, args);
                 instructions.push(Instruction::PushFromReturn);
             }
@@ -49,7 +49,11 @@ fn expand_function_call_instructions<TS: TypeSystem>(
             Operand::Expression(builder) => instructions.append(&mut builder.build_instructions()),
         }
     }
-    instructions.push(Instruction::Invoke(arg_count, function.stack_size, function.location));
+    instructions.push(Instruction::Invoke(
+        arg_count,
+        function.stack_size,
+        function.location,
+    ));
 }
 
 fn expand_first_operand_instructions<TS: TypeSystem>(
@@ -57,10 +61,7 @@ fn expand_first_operand_instructions<TS: TypeSystem>(
     instructions: &mut Vec<Instruction<TS>>,
 ) {
     match operand {
-        Operand::Function {
-            function,
-            args,
-        } => {
+        Operand::Function { function, args } => {
             expand_function_call_instructions(instructions, &function, args);
             instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
         }
@@ -78,10 +79,7 @@ fn expand_second_operand_instructions<TS: TypeSystem>(
     instructions: &mut Vec<Instruction<TS>>,
 ) {
     match operand {
-        Operand::Function {
-            function,
-            args,
-        } => {
+        Operand::Function { function, args } => {
             expand_function_call_instructions(instructions, &function, args);
         }
         Operand::Expression(builder) => {

@@ -23,7 +23,11 @@ pub struct ExecutionContext<TS: TypeSystem> {
 }
 
 impl<TS: TypeSystem> ExecutionContext<TS> {
-    pub fn new(instructions: Vec<Instruction<TS>>, stack_size: usize, entry_point: usize) -> ExecutionContext<TS> {
+    pub fn new(
+        instructions: Vec<Instruction<TS>>,
+        stack_size: usize,
+        entry_point: usize,
+    ) -> ExecutionContext<TS> {
         ExecutionContext {
             stack: Vec::with_capacity(stack_size),
             initial_stack_size: stack_size,
@@ -109,9 +113,9 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 self.registers[RegisterId::RightOperand.id()] = raw_v.clone()
             }
             PushRaw(value) => self.stack.push(value.clone()),
-            #[cfg(feature="popped_register")]
+            #[cfg(feature = "popped_register")]
             Pop => self.registers[RegisterId::Popped.id()] = self.stack.pop().unwrap_or_default(),
-            #[cfg(not(feature="popped_register"))]
+            #[cfg(not(feature = "popped_register"))]
             Pop => self.registers[RegisterId::Return.id()] = self.stack.pop().unwrap_or_default(),
             Push(from) => self.stack.push(self.get(*from).clone()),
             PushFromReturn => self

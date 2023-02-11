@@ -5,9 +5,9 @@ pub mod execution_context;
 pub mod expression;
 pub mod function;
 pub mod instruction;
+pub mod operators;
 pub mod value;
 pub mod vm_writer;
-pub mod operators;
 
 pub trait TypeSystem {
     type Value: Value;

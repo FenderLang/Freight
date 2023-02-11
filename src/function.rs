@@ -53,10 +53,16 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
 
     pub fn build_instructions(mut self) -> Vec<Instruction<TS>> {
         let has_return = self.instructions.last().map_or(false, |i| {
-            matches!(i, Instruction::Return(_) | Instruction::ReturnConstant(_, _))
+            matches!(
+                i,
+                Instruction::Return(_) | Instruction::ReturnConstant(_, _)
+            )
         });
         if !has_return {
-            self.instructions.push(Instruction::ReturnConstant(Default::default(), self.stack_size));
+            self.instructions.push(Instruction::ReturnConstant(
+                Default::default(),
+                self.stack_size,
+            ));
         }
         self.instructions
     }

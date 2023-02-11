@@ -1,8 +1,9 @@
 use crate::{
     execution_context::ExecutionContext,
+    expression::Expression,
     function::{FunctionBuilder, FunctionRef},
     instruction::Instruction,
-    TypeSystem, expression::Expression,
+    TypeSystem,
 };
 
 #[derive(Debug)]
@@ -19,7 +20,10 @@ impl<TS: TypeSystem> VMWriter<TS> {
         }
     }
 
-    pub fn write_instructions(&mut self, instructions: impl IntoIterator<Item = Instruction<TS>>) -> usize {
+    pub fn write_instructions(
+        &mut self,
+        instructions: impl IntoIterator<Item = Instruction<TS>>,
+    ) -> usize {
         let begin = self.instructions.len();
         self.instructions.extend(instructions);
         begin
