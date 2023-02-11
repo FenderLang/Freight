@@ -18,14 +18,19 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
     pub fn new(args: usize) -> FunctionBuilder<TS> {
         Self {
             args,
-            stack_size: 1 + args,
+            stack_size: args + 1,
             instructions: vec![],
         }
     }
 
     pub fn create_variable(&mut self) -> usize {
+        let var = self.stack_size;
         self.stack_size += 1;
-        self.stack_size
+        var
+    }
+
+    pub fn write_instructions(&mut self, instructions: impl IntoIterator<Item = Instruction<TS>>) {
+        self.instructions.extend(instructions);
     }
 
     pub fn assign_value(&mut self, var: usize, expr: Expression<TS>) {
@@ -34,39 +39,39 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
     }
 
     pub fn evaluate_expression(&mut self, expr: Expression<TS>) {
-        self.instructions.extend(expr.build_instructions(self.held_value_stack_offset()));
+        self.instructions.extend(expr.build_instructions());
     }
 
     pub fn argument_stack_offset(&self, arg: usize) -> usize {
-        arg
-    }
-
-    pub fn held_value_stack_offset(&self) -> usize {
-        self.args
+        arg + 1
     }
 
     pub fn return_expression(&mut self, expr: Expression<TS>) {
         self.evaluate_expression(expr);
-        self.instructions.push(Instruction::Return);
+        self.instructions.push(Instruction::Return(self.stack_size));
     }
 
     pub fn build_instructions(mut self) -> Vec<Instruction<TS>> {
         let has_return = self.instructions.last().map_or(false, |i| {
-            matches!(i, Instruction::Return | Instruction::ReturnConstant(_))
+            matches!(i, Instruction::Return(_) | Instruction::ReturnConstant(_, _))
         });
         if !has_return {
-            self.instructions.push(Instruction::ReturnConstant(Default::default()));
+            self.instructions.push(Instruction::ReturnConstant(Default::default(), self.stack_size));
         }
         self.instructions
     }
 }
 
 impl FunctionRef {
-    fn arg_count(&self) -> usize {
+    pub fn arg_count(&self) -> usize {
         self.arg_count
     }
 
-    fn stack_size(&self) -> usize {
+    pub fn stack_size(&self) -> usize {
         self.stack_size
+    }
+
+    pub fn address(&self) -> usize {
+        self.location
     }
 }

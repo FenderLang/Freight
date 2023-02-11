@@ -15,38 +15,60 @@ pub struct ExecutionContext<TS: TypeSystem> {
     instructions: Vec<Instruction<TS>>,
     instruction: usize,
     frames: Vec<usize>,
+    call_stack: Vec<usize>,
     frame: usize,
-
     registers: [TS::Value; 3],
+    entry_point: usize,
+    initial_stack_size: usize,
 }
 
 impl<TS: TypeSystem> ExecutionContext<TS> {
-    pub fn new(instructions: Vec<Instruction<TS>>, stack_size: usize) -> ExecutionContext<TS> {
+    pub fn new(instructions: Vec<Instruction<TS>>, stack_size: usize, entry_point: usize) -> ExecutionContext<TS> {
+        dbg!(&instructions);
         ExecutionContext {
             stack: Vec::with_capacity(stack_size),
+            initial_stack_size: stack_size,
             instructions,
             instruction: 0,
             frames: vec![],
+            call_stack: vec![],
             frame: 0,
             registers: Default::default(),
+            entry_point,
         }
     }
 
-    fn get(&self, offset: usize) -> &TS::Value {
+    pub fn get_register(&self, register: RegisterId) -> &TS::Value {
+        &self.registers[register.id()]
+    }
+
+    pub fn get(&self, offset: usize) -> &TS::Value {
         &self.stack[self.frame + offset]
     }
 
-    fn set(&mut self, offset: usize, value: TS::Value) {
+    pub fn set(&mut self, offset: usize, value: TS::Value) {
         self.stack[self.frame + offset] = value;
     }
 
-    fn get_mut(&mut self, offset: usize) -> &mut TS::Value {
+    pub fn get_mut(&mut self, offset: usize) -> &mut TS::Value {
         &mut self.stack[self.frame + offset]
     }
 
-    fn execute(&mut self, index: usize) {
+    fn do_return(&mut self, stack_size: usize) {
+        self.frame = self.frames.pop().unwrap();
+        self.instruction = self.call_stack.pop().unwrap();
+        self.stack.drain((self.stack.len() - stack_size)..);
+    }
+
+    pub fn execute(&mut self, index: usize) -> bool {
         use Instruction::*;
         let instruction = &self.instructions[index];
+        println!("\n--------------\n");
+        dbg!(index);
+        dbg!(instruction);
+        dbg!(&self.stack);
+        dbg!(&self.registers);
+        let mut increment_index = true;
         match instruction {
             Create(offset, creator) => *self.get_mut(*offset) = creator(self),
             Move(from, to) => *self.get_mut(*to) = self.get(*from).clone(),
@@ -60,18 +82,23 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 self.registers[RegisterId::RightOperand.id()] = self.get(*from).clone();
             }
             Invoke(arg_count, stack_size, instruction) => {
+                // TODO: Argument count checks
+                self.call_stack.push(self.instruction);
                 self.frames.push(self.frame);
-                self.frame -= arg_count;
                 self.instruction = *instruction;
-                for _ in 0..stack_size - arg_count {
+                // Subtract 1 to account for the held value slot
+                for _ in 0..stack_size - arg_count - 1 {
                     self.stack.push(Default::default());
                 }
+                self.frame = self.stack.len() - stack_size;
+                dbg!(self.frame);
+                increment_index = false;
             }
             InvokeNative(func) => self.registers[RegisterId::Return.id()] = func(self),
-            Return => self.frame = self.frames.pop().unwrap(),
-            ReturnConstant(c) => {
+            Return(stack_size) => self.do_return(*stack_size),
+            ReturnConstant(c, stack_size) => {
                 self.registers[RegisterId::Return.id()] = c.clone();
-                self.frame = self.frames.pop().unwrap();
+                self.do_return(*stack_size);
             }
             UnaryOperation(unary_op) => {
                 self.registers[RegisterId::Return.id()] =
@@ -108,12 +135,19 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
         }
+        increment_index
     }
 
     pub fn run(&mut self) {
+        self.instruction = self.entry_point;
+        self.stack = vec![];
+        for _ in 0..self.initial_stack_size {
+            self.stack.push(Default::default());
+        }
         while self.instruction < self.instructions.len() {
-            self.execute(self.instruction);
-            self.instruction += 1;
+            if self.execute(self.instruction) {
+                self.instruction += 1;
+            }
         }
     }
 }
