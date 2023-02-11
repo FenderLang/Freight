@@ -9,6 +9,7 @@ pub enum Instruction<TS: TypeSystem> {
     MoveToReturn(usize),
     MoveRightOperand(usize),
     Invoke(usize, usize, usize),
+    InvokeDynamic(usize),
     InvokeNative(fn(&mut ExecutionContext<TS>) -> TS::Value),
     Return(usize),
     ReturnConstant(TS::Value, usize),
@@ -40,6 +41,7 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
                 .field(arg2)
                 .finish(),
             Self::InvokeNative(_) => f.debug_tuple("InvokeNative").finish(),
+            Self::InvokeDynamic(arg_count) => f.debug_tuple("InvokeDynamic").field(arg_count).finish(),
             Self::Return(stack_size) => f.debug_tuple("Return").field(stack_size).finish(),
             Self::ReturnConstant(arg0, stack_size) => f
                 .debug_tuple("ReturnConstant")

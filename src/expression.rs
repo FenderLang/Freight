@@ -1,6 +1,6 @@
 use crate::{
-    execution_context::HELD_VALUE_LOCATION, function::FunctionRef, instruction::Instruction,
-    TypeSystem,
+    error::FreightError, execution_context::HELD_VALUE_LOCATION, function::FunctionRef,
+    instruction::Instruction, TypeSystem,
 };
 
 #[derive(Clone, Debug)]
@@ -35,9 +35,15 @@ fn expand_function_call_instructions<TS: TypeSystem>(
     instructions: &mut Vec<Instruction<TS>>,
     function: &FunctionRef,
     args: Vec<Operand<TS>>,
-) {
+) -> Result<(), FreightError> {
     instructions.push(Instruction::PushRaw(Default::default()));
     let arg_count = args.len();
+    if arg_count != function.arg_count {
+        return Err(FreightError::IncorrectArgumentCount {
+            expected: function.arg_count,
+            actual: arg_count,
+        });
+    }
     for arg in args {
         match arg {
             Operand::Function { function, args } => {
@@ -46,7 +52,7 @@ fn expand_function_call_instructions<TS: TypeSystem>(
             }
             Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
             Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
-            Operand::Expression(builder) => instructions.append(&mut builder.build_instructions()),
+            Operand::Expression(builder) => instructions.append(&mut builder.build_instructions()?),
         }
     }
     instructions.push(Instruction::Invoke(
@@ -54,12 +60,13 @@ fn expand_function_call_instructions<TS: TypeSystem>(
         function.stack_size,
         function.location,
     ));
+    Ok(())
 }
 
 fn expand_first_operand_instructions<TS: TypeSystem>(
     operand: Operand<TS>,
     instructions: &mut Vec<Instruction<TS>>,
-) {
+) -> Result<(), FreightError> {
     match operand {
         Operand::Function { function, args } => {
             expand_function_call_instructions(instructions, &function, args);
@@ -68,31 +75,33 @@ fn expand_first_operand_instructions<TS: TypeSystem>(
         Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr, HELD_VALUE_LOCATION)),
         Operand::ValueRaw(val) => instructions.push(Instruction::SetHeldRaw(val)),
         Operand::Expression(builder) => {
-            instructions.append(&mut builder.build_instructions());
+            instructions.append(&mut builder.build_instructions()?);
             instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
         }
-    }
+    };
+    Ok(())
 }
 
 fn expand_second_operand_instructions<TS: TypeSystem>(
     operand: Operand<TS>,
     instructions: &mut Vec<Instruction<TS>>,
-) {
+) -> Result<(), FreightError> {
     match operand {
         Operand::Function { function, args } => {
             expand_function_call_instructions(instructions, &function, args);
         }
         Operand::Expression(builder) => {
-            instructions.append(&mut builder.build_instructions());
+            instructions.append(&mut builder.build_instructions()?);
             instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
         }
         Operand::ValueRef(addr) => instructions.push(Instruction::MoveRightOperand(addr)),
         Operand::ValueRaw(val) => instructions.push(Instruction::SetRightOperandRaw(val)),
     }
+    Ok(())
 }
 
 impl<TS: TypeSystem> Expression<TS> {
-    pub fn build_instructions(self) -> Vec<Instruction<TS>> {
+    pub fn build_instructions(self) -> Result<Vec<Instruction<TS>>, FreightError> {
         let mut instructions = Vec::new();
 
         match self {
@@ -114,6 +123,6 @@ impl<TS: TypeSystem> Expression<TS> {
                 instructions.push(Instruction::MoveToReturn(HELD_VALUE_LOCATION));
             }
         }
-        instructions
+        Ok(instructions)
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    execution_context::register_ids::RegisterId, instruction::Instruction, BinaryOperator,
-    TypeSystem, UnaryOperator,
+    error::FreightError, execution_context::register_ids::RegisterId, instruction::Instruction,
+    value::Value, BinaryOperator, TypeSystem, UnaryOperator,
 };
 use std::fmt::Debug;
 
@@ -63,7 +63,18 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.stack.drain((self.stack.len() - stack_size)..);
     }
 
-    pub fn execute(&mut self, index: usize) -> bool {
+    fn do_invoke(&mut self, arg_count: usize, stack_size: usize, instruction: usize) {
+        self.call_stack.push(self.instruction);
+        self.frames.push(self.frame);
+        self.instruction = instruction;
+        // Subtract 1 to account for the held value slot
+        for _ in 0..stack_size - arg_count - 1 {
+            self.stack.push(Default::default());
+        }
+        self.frame = self.stack.len() - stack_size;
+    }
+
+    pub fn execute(&mut self, index: usize) -> Result<bool, FreightError> {
         use Instruction::*;
         let instruction = &self.instructions[index];
         let mut increment_index = true;
@@ -80,16 +91,21 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 self.registers[RegisterId::RightOperand.id()] = self.get(*from).clone();
             }
             Invoke(arg_count, stack_size, instruction) => {
-                // TODO: Argument count checks
-                self.call_stack.push(self.instruction);
-                self.frames.push(self.frame);
-                self.instruction = *instruction;
-                // Subtract 1 to account for the held value slot
-                for _ in 0..stack_size - arg_count - 1 {
-                    self.stack.push(Default::default());
+                self.do_invoke(*arg_count, *stack_size, *instruction);
+                increment_index = false;
+            }
+            InvokeDynamic(arg_count) => {
+                let func = self
+                    .get_register(RegisterId::Return)
+                    .cast_to_function()
+                    .ok_or(FreightError::InvalidInvocationTarget)?;
+                if *arg_count != func.arg_count {
+                    return Err(FreightError::IncorrectArgumentCount {
+                        expected: func.arg_count,
+                        actual: *arg_count,
+                    });
                 }
-                self.frame = self.stack.len() - stack_size;
-
+                self.do_invoke(func.arg_count, func.stack_size, func.location);
                 increment_index = false;
             }
             InvokeNative(func) => self.registers[RegisterId::Return.id()] = func(self),
@@ -133,19 +149,20 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
         }
-        increment_index
+        Ok(increment_index)
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), FreightError> {
         self.instruction = self.entry_point;
         self.stack = vec![];
         for _ in 0..self.initial_stack_size {
             self.stack.push(Default::default());
         }
         while self.instruction < self.instructions.len() {
-            if self.execute(self.instruction) {
+            if self.execute(self.instruction)? {
                 self.instruction += 1;
             }
         }
+        Ok(())
     }
 }
