@@ -85,7 +85,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                     self.stack.push(Default::default());
                 }
                 self.frame = self.stack.len() - stack_size;
-                dbg!(self.frame);
+
                 increment_index = false;
             }
             InvokeNative(func) => self.registers[RegisterId::Return.id()] = func(self),
