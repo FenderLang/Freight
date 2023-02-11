@@ -55,7 +55,6 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             MoveToReturn(from) => {
                 self.registers[RegisterId::Return.id()] = self.get(*from).clone();
-                // self.return_value = self.get(*from).clone();
             }
             MoveRightOperand(from) => {
                 self.registers[RegisterId::RightOperand.id()] = self.get(*from).clone();
@@ -69,10 +68,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 }
             }
             InvokeNative(func) => self.registers[RegisterId::Return.id()] = func(self),
-            Return(offset) => {
-                self.registers[RegisterId::Return.id()] = self.get(*offset).clone();
-                self.frame = self.frames.pop().unwrap();
-            }
+            Return => self.frame = self.frames.pop().unwrap(),
             ReturnConstant(c) => {
                 self.registers[RegisterId::Return.id()] = c.clone();
                 self.frame = self.frames.pop().unwrap();
@@ -96,8 +92,6 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             Pop => self.registers[RegisterId::Popped.id()] = self.stack.pop().unwrap_or_default(),
             #[cfg(not(feature="popped_register"))]
             Pop => self.registers[RegisterId::Return.id()] = self.stack.pop().unwrap_or_default(),
-
-
             Push(from) => self.stack.push(self.get(*from).clone()),
             PushFromReturn => self
                 .stack
