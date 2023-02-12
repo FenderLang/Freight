@@ -139,7 +139,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 .push(self.registers[RegisterId::Return.id()].clone()),
             UnaryOperationWithHeld(unary_op) => {
                 self.registers[RegisterId::Return.id()] =
-                    unary_op.apply_1(&self.get(HELD_VALUE_LOCATION))
+                    unary_op.apply_1(self.get(HELD_VALUE_LOCATION))
             }
             BinaryOperationWithHeld(binary_op) => {
                 self.registers[RegisterId::Return.id()] = binary_op.apply_2(

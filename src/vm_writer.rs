@@ -12,6 +12,12 @@ pub struct VMWriter<TS: TypeSystem> {
     stack_size: usize,
 }
 
+impl<TS: TypeSystem> Default for VMWriter<TS> {
+    fn default() -> VMWriter<TS> {
+        VMWriter::new()
+    }
+}
+
 impl<TS: TypeSystem> VMWriter<TS> {
     pub fn new() -> VMWriter<TS> {
         Self {

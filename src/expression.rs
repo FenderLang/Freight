@@ -50,7 +50,7 @@ fn expand_function_args<TS: TypeSystem>(
             Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
             Operand::Expression(builder) => instructions.extend(builder.build_instructions()?),
             Operand::DynamicFunctionCall { function, args } => {
-                expand_dynamic_function_call_instructions(instructions, *function, args);
+                expand_dynamic_function_call_instructions(instructions, *function, args)?;
                 instructions.push(Instruction::PushFromReturn);
             },
         }
@@ -85,8 +85,8 @@ fn expand_dynamic_function_call_instructions<TS: TypeSystem>(
     args: Vec<Operand<TS>>,
 ) -> Result<(), FreightError> {
     let arg_count = args.len();
-    expand_function_args(instructions, args);
-    expand_first_operand_instructions(function, instructions);
+    expand_function_args(instructions, args)?;
+    expand_first_operand_instructions(function, instructions)?;
     instructions.push(Instruction::InvokeDynamic(arg_count));
     Ok(())
 }
