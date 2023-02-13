@@ -3,13 +3,19 @@ use crate::{
     expression::Expression,
     function::{FunctionBuilder, FunctionRef},
     instruction::Instruction,
-    TypeSystem,
+    TypeSystem, error::FreightError,
 };
 
 #[derive(Debug)]
 pub struct VMWriter<TS: TypeSystem> {
     instructions: Vec<Instruction<TS>>,
     stack_size: usize,
+}
+
+impl<TS: TypeSystem> Default for VMWriter<TS> {
+    fn default() -> VMWriter<TS> {
+        VMWriter::new()
+    }
 }
 
 impl<TS: TypeSystem> VMWriter<TS> {
@@ -45,8 +51,8 @@ impl<TS: TypeSystem> VMWriter<TS> {
         self.stack_size - 1
     }
 
-    pub fn evaluate_expression(&mut self, expression: Expression<TS>) -> usize {
-        self.write_instructions(expression.build_instructions())
+    pub fn evaluate_expression(&mut self, expression: Expression<TS>) -> Result<usize, FreightError> {
+        Ok(self.write_instructions(expression.build_instructions()?))
     }
 
     pub fn finish(self, entry_point: usize) -> ExecutionContext<TS> {

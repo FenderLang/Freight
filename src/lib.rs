@@ -8,6 +8,7 @@ pub mod instruction;
 pub mod operators;
 pub mod value;
 pub mod vm_writer;
+pub mod error;
 
 pub trait TypeSystem {
     type Value: Value;
