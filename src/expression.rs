@@ -43,7 +43,7 @@ fn expand_function_args<TS: TypeSystem>(
     for arg in args {
         match arg {
             Operand::StaticFunctionCall { function, args } => {
-                expand_function_call_instructions(instructions, &function, args)?;
+                expand_static_function_call_instructions(instructions, &function, args)?;
                 instructions.push(Instruction::PushFromReturn);
             }
             Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
@@ -58,7 +58,7 @@ fn expand_function_args<TS: TypeSystem>(
     Ok(())
 }
 
-fn expand_function_call_instructions<TS: TypeSystem>(
+fn expand_static_function_call_instructions<TS: TypeSystem>(
     instructions: &mut Vec<Instruction<TS>>,
     function: &FunctionRef,
     args: Vec<Operand<TS>>,
@@ -97,7 +97,7 @@ fn expand_first_operand_instructions<TS: TypeSystem>(
 ) -> Result<(), FreightError> {
     match operand {
         Operand::StaticFunctionCall { function, args } => {
-            expand_function_call_instructions(instructions, &function, args)?;
+            expand_static_function_call_instructions(instructions, &function, args)?;
             instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
         }
         Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr, HELD_VALUE_LOCATION)),
@@ -120,7 +120,7 @@ fn expand_second_operand_instructions<TS: TypeSystem>(
 ) -> Result<(), FreightError> {
     match operand {
         Operand::StaticFunctionCall { function, args } => {
-            expand_function_call_instructions(instructions, &function, args)?;
+            expand_static_function_call_instructions(instructions, &function, args)?;
         }
         Operand::Expression(builder) => {
             instructions.append(&mut builder.build_instructions()?);
