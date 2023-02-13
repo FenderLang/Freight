@@ -1,4 +1,4 @@
-use crate::{TypeSystem, function::FunctionRef};
+use crate::{function::FunctionRef, TypeSystem};
 use std::fmt::Debug;
 
 pub trait Value: Clone + Default + Debug {

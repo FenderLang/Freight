@@ -2,13 +2,13 @@ use operators::{binary::BinaryOperator, unary::UnaryOperator};
 use value::Value;
 
 pub mod execution_context;
-pub mod expression_builder;
+pub mod expression;
 pub mod function;
-pub mod function_builder;
 pub mod instruction;
+pub mod operators;
 pub mod value;
 pub mod vm_writer;
-pub mod operators;
+pub mod error;
 
 pub trait TypeSystem {
     type Value: Value;

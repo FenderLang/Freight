@@ -1,6 +1,6 @@
 use crate::{
-    execution_context::register_ids::RegisterId, instruction::Instruction, BinaryOperator,
-    TypeSystem, UnaryOperator,
+    error::FreightError, execution_context::register_ids::RegisterId, instruction::Instruction,
+    value::Value, BinaryOperator, TypeSystem, UnaryOperator,
 };
 use std::fmt::Debug;
 
@@ -15,38 +15,69 @@ pub struct ExecutionContext<TS: TypeSystem> {
     instructions: Vec<Instruction<TS>>,
     instruction: usize,
     frames: Vec<usize>,
+    call_stack: Vec<usize>,
     frame: usize,
-
     registers: [TS::Value; 3],
+    entry_point: usize,
+    initial_stack_size: usize,
 }
 
 impl<TS: TypeSystem> ExecutionContext<TS> {
-    pub fn new(instructions: Vec<Instruction<TS>>, stack_size: usize) -> ExecutionContext<TS> {
+    pub fn new(
+        instructions: Vec<Instruction<TS>>,
+        stack_size: usize,
+        entry_point: usize,
+    ) -> ExecutionContext<TS> {
         ExecutionContext {
             stack: Vec::with_capacity(stack_size),
+            initial_stack_size: stack_size,
             instructions,
             instruction: 0,
             frames: vec![],
+            call_stack: vec![],
             frame: 0,
             registers: Default::default(),
+            entry_point,
         }
     }
 
-    fn get(&self, offset: usize) -> &TS::Value {
+    pub fn get_register(&self, register: RegisterId) -> &TS::Value {
+        &self.registers[register.id()]
+    }
+
+    pub fn get(&self, offset: usize) -> &TS::Value {
         &self.stack[self.frame + offset]
     }
 
-    fn set(&mut self, offset: usize, value: TS::Value) {
+    pub fn set(&mut self, offset: usize, value: TS::Value) {
         self.stack[self.frame + offset] = value;
     }
 
-    fn get_mut(&mut self, offset: usize) -> &mut TS::Value {
+    pub fn get_mut(&mut self, offset: usize) -> &mut TS::Value {
         &mut self.stack[self.frame + offset]
     }
 
-    fn execute(&mut self, index: usize) {
+    fn do_return(&mut self, stack_size: usize) {
+        self.frame = self.frames.pop().unwrap();
+        self.instruction = self.call_stack.pop().unwrap();
+        self.stack.drain((self.stack.len() - stack_size)..);
+    }
+
+    fn do_invoke(&mut self, arg_count: usize, stack_size: usize, instruction: usize) {
+        self.call_stack.push(self.instruction);
+        self.frames.push(self.frame);
+        self.instruction = instruction;
+        // Subtract 1 to account for the held value slot
+        for _ in 0..stack_size - arg_count - 1 {
+            self.stack.push(Default::default());
+        }
+        self.frame = self.stack.len() - stack_size;
+    }
+
+    pub fn execute(&mut self, index: usize) -> Result<bool, FreightError> {
         use Instruction::*;
         let instruction = &self.instructions[index];
+        let mut increment_index = true;
         match instruction {
             Create(offset, creator) => *self.get_mut(*offset) = creator(self),
             Move(from, to) => *self.get_mut(*to) = self.get(*from).clone(),
@@ -55,27 +86,33 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             MoveToReturn(from) => {
                 self.registers[RegisterId::Return.id()] = self.get(*from).clone();
-                // self.return_value = self.get(*from).clone();
             }
             MoveRightOperand(from) => {
                 self.registers[RegisterId::RightOperand.id()] = self.get(*from).clone();
             }
             Invoke(arg_count, stack_size, instruction) => {
-                self.frames.push(self.frame);
-                self.frame -= arg_count;
-                self.instruction = *instruction;
-                for _ in 0..stack_size - arg_count {
-                    self.stack.push(Default::default());
+                self.do_invoke(*arg_count, *stack_size, *instruction);
+                increment_index = false;
+            }
+            InvokeDynamic(arg_count) => {
+                let func = self
+                    .get_register(RegisterId::Return)
+                    .cast_to_function()
+                    .ok_or(FreightError::InvalidInvocationTarget)?;
+                if *arg_count != func.arg_count {
+                    return Err(FreightError::IncorrectArgumentCount {
+                        expected: func.arg_count,
+                        actual: *arg_count,
+                    });
                 }
+                self.do_invoke(func.arg_count, func.stack_size, func.location);
+                increment_index = false;
             }
             InvokeNative(func) => self.registers[RegisterId::Return.id()] = func(self),
-            Return(offset) => {
-                self.registers[RegisterId::Return.id()] = self.get(*offset).clone();
-                self.frame = self.frames.pop().unwrap();
-            }
-            ReturnConstant(c) => {
+            Return(stack_size) => self.do_return(*stack_size),
+            ReturnConstant(c, stack_size) => {
                 self.registers[RegisterId::Return.id()] = c.clone();
-                self.frame = self.frames.pop().unwrap();
+                self.do_return(*stack_size);
             }
             UnaryOperation(unary_op) => {
                 self.registers[RegisterId::Return.id()] =
@@ -92,19 +129,17 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 self.registers[RegisterId::RightOperand.id()] = raw_v.clone()
             }
             PushRaw(value) => self.stack.push(value.clone()),
-            #[cfg(feature="popped_register")]
+            #[cfg(feature = "popped_register")]
             Pop => self.registers[RegisterId::Popped.id()] = self.stack.pop().unwrap_or_default(),
-            #[cfg(not(feature="popped_register"))]
+            #[cfg(not(feature = "popped_register"))]
             Pop => self.registers[RegisterId::Return.id()] = self.stack.pop().unwrap_or_default(),
-
-
             Push(from) => self.stack.push(self.get(*from).clone()),
             PushFromReturn => self
                 .stack
                 .push(self.registers[RegisterId::Return.id()].clone()),
             UnaryOperationWithHeld(unary_op) => {
                 self.registers[RegisterId::Return.id()] =
-                    unary_op.apply_1(&self.get(HELD_VALUE_LOCATION))
+                    unary_op.apply_1(self.get(HELD_VALUE_LOCATION))
             }
             BinaryOperationWithHeld(binary_op) => {
                 self.registers[RegisterId::Return.id()] = binary_op.apply_2(
@@ -114,12 +149,20 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
         }
+        Ok(increment_index)
     }
 
-    pub fn run(&mut self) {
-        while self.instruction < self.instructions.len() {
-            self.execute(self.instruction);
-            self.instruction += 1;
+    pub fn run(&mut self) -> Result<(), FreightError> {
+        self.instruction = self.entry_point;
+        self.stack = vec![];
+        for _ in 0..self.initial_stack_size {
+            self.stack.push(Default::default());
         }
+        while self.instruction < self.instructions.len() {
+            if self.execute(self.instruction)? {
+                self.instruction += 1;
+            }
+        }
+        Ok(())
     }
 }
