@@ -8,7 +8,10 @@ pub enum FreightError {
 
 impl Display for FreightError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
+        match self {
+            Self::InvalidInvocationTarget => f.write_str("Cannot invoke non-function values"),
+            Self::IncorrectArgumentCount { expected, actual } => write!(f, "Expected {expected} arguments, got {actual}"),
+        }
     }
 }
 
