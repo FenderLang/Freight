@@ -122,7 +122,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 match &func.function_type {
                     FunctionType::Static => (),
                     FunctionType::CapturingDef(_) => return Err(FreightError::InvalidInvocationTarget),
-                    FunctionType::CapturingRef(values) => self.stack.extend(values.iter().cloned()),
+                    FunctionType::CapturingRef(values) => self.stack.extend(values.iter().map(|v| v.dupe_ref())),
                 }
                 self.do_invoke(func.arg_count, func.stack_size, func.location);
                 increment_index = false;
