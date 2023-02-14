@@ -33,6 +33,7 @@ pub enum Expression<TS: TypeSystem> {
     },
     /// Encapsulate a single operand in an expression
     Eval(Operand<TS>),
+    FunctionCapture(FunctionRef<TS>),
 }
 
 fn expand_function_args<TS: TypeSystem>(
@@ -158,6 +159,10 @@ impl<TS: TypeSystem> Expression<TS> {
                 expand_first_operand_instructions(operand, &mut instructions)?;
                 instructions.push(Instruction::MoveToReturn(HELD_VALUE_LOCATION));
             }
+            Expression::FunctionCapture(func) => {
+                instructions.push(Instruction::SetReturnRaw(func.into()));
+                instructions.push(Instruction::CaptureValues);
+            },
         }
         Ok(instructions)
     }
