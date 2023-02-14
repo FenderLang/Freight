@@ -6,6 +6,11 @@ use std::fmt::Debug;
 
 pub mod register_ids;
 
+pub enum InstructionWrapper<TS: TypeSystem> {
+    RawInstruction(Instruction<TS>),
+    InstructionLocation(usize),
+}
+
 /// Location in stack of the temporary held value used by the expression builder.
 pub const HELD_VALUE_LOCATION: usize = 0;
 
@@ -74,10 +79,12 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.frame = self.stack.len() - stack_size;
     }
 
-    pub fn execute(&mut self, index: usize) -> Result<bool, FreightError> {
+    pub fn execute(&mut self, ins: InstructionWrapper<TS>) -> Result<bool, FreightError> {
         use Instruction::*;
-        let instruction = &self.instructions[index];
-        let mut increment_index = true;
+        let (instruction, mut increment_index) = match &ins {
+            InstructionWrapper::RawInstruction(i) => (i, false),
+            InstructionWrapper::InstructionLocation(index) => (&self.instructions[*index], true),
+        };
         match instruction {
             Create(offset, creator) => *self.get_mut(*offset) = creator(self),
             Move(from, to) => *self.get_mut(*to) = self.get(*from).clone(),
@@ -159,7 +166,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             self.stack.push(Default::default());
         }
         while self.instruction < self.instructions.len() {
-            if self.execute(self.instruction)? {
+            if self.execute(InstructionWrapper::InstructionLocation(self.instruction))? {
                 self.instruction += 1;
             }
         }
