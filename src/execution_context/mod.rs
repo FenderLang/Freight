@@ -45,7 +45,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             frames: vec![],
             call_stack: vec![],
             frame: 0,
-            registers: Default::default(),
+            registers: std::array::from_fn(|_| Value::uninitialized_reference()),
             entry_point,
         }
     }
@@ -82,7 +82,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.instruction = instruction;
         // Subtract 1 to account for the held value slot
         for _ in 0..stack_size - arg_count - 1 {
-            self.stack.push(Default::default());
+            self.stack.push(Value::uninitialized_reference());
         }
         self.frame = self.stack.len() - stack_size;
     }
@@ -190,7 +190,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.instruction = self.entry_point;
         self.stack = vec![];
         for _ in 0..self.initial_stack_size {
-            self.stack.push(Default::default());
+            self.stack.push(Value::uninitialized_reference());
         }
         while self.instruction < self.instructions.len() {
             if self.execute(InstructionWrapper::InstructionLocation(self.instruction))? {

@@ -3,6 +3,7 @@ use std::fmt::Debug;
 
 pub trait Value: Clone + Default + Debug + From<FunctionRef<Self::TS>> {
     type TS: TypeSystem<Value = Self>;
+    fn uninitialized_reference() -> Self;
     fn get_type(&self) -> &<Self::TS as TypeSystem>::TypeId;
     fn deep_clone(&self) -> Self;
     fn dupe_ref(&self) -> Self;
