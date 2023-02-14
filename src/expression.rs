@@ -6,7 +6,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum Operand<TS: TypeSystem> {
     StaticFunctionCall {
-        function: FunctionRef,
+        function: FunctionRef<TS>,
         args: Vec<Operand<TS>>,
     },
     DynamicFunctionCall {
@@ -60,7 +60,7 @@ fn expand_function_args<TS: TypeSystem>(
 
 fn expand_static_function_call_instructions<TS: TypeSystem>(
     instructions: &mut Vec<Instruction<TS>>,
-    function: &FunctionRef,
+    function: &FunctionRef<TS>,
     args: Vec<Operand<TS>>,
 ) -> Result<(), FreightError> {
     let arg_count = args.len();

@@ -35,14 +35,16 @@ impl<TS: TypeSystem> VMWriter<TS> {
         begin
     }
 
-    pub fn include_function(&mut self, function: FunctionBuilder<TS>) -> FunctionRef {
+    pub fn include_function(&mut self, function: FunctionBuilder<TS>) -> FunctionRef<TS> {
         let begin = self.instructions.len();
         let (arg_count, stack_size) = (function.args, function.stack_size);
+        let function_type = function.function_type.clone();
         self.instructions.extend(function.build_instructions());
         FunctionRef {
             arg_count,
             stack_size,
             location: begin,
+            function_type,
         }
     }
 

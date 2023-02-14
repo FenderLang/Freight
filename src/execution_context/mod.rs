@@ -1,6 +1,10 @@
 use crate::{
-    error::FreightError, execution_context::register_ids::RegisterId, instruction::Instruction,
-    value::Value, BinaryOperator, TypeSystem, UnaryOperator,
+    error::FreightError,
+    execution_context::register_ids::RegisterId,
+    function::{FunctionRef, FunctionType},
+    instruction::Instruction,
+    value::Value,
+    BinaryOperator, TypeSystem, UnaryOperator,
 };
 use std::fmt::Debug;
 
@@ -48,6 +52,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
 
     pub fn get_register(&self, register: RegisterId) -> &TS::Value {
         &self.registers[register.id()]
+    }
+
+    pub fn get_register_mut(&mut self, register: RegisterId) -> &mut TS::Value {
+        &mut self.registers[register.id()]
     }
 
     pub fn get(&self, offset: usize) -> &TS::Value {
@@ -102,8 +110,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 increment_index = false;
             }
             InvokeDynamic(arg_count) => {
-                let func = self
-                    .get_register(RegisterId::Return)
+                let func = (&self.registers[0])
                     .cast_to_function()
                     .ok_or(FreightError::InvalidInvocationTarget)?;
                 if *arg_count != func.arg_count {
@@ -111,6 +118,11 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                         expected: func.arg_count,
                         actual: *arg_count,
                     });
+                }
+                match &func.function_type {
+                    FunctionType::Static => (),
+                    FunctionType::CapturingDef(_) => return Err(FreightError::InvalidInvocationTarget),
+                    FunctionType::CapturingRef(values) => self.stack.extend(values.iter().cloned()),
                 }
                 self.do_invoke(func.arg_count, func.stack_size, func.location);
                 increment_index = false;
@@ -155,6 +167,21 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 )
             }
             SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
+            CaptureValues => {
+                let func = self.get_register(RegisterId::Return)
+                    .cast_to_function()
+                    .ok_or(FreightError::InvalidInvocationTarget)?;
+                let FunctionType::CapturingDef(capture) = &func.function_type else {
+                    return Err(FreightError::InvalidInvocationTarget);
+                };
+                *self.get_register_mut(RegisterId::Return) = FunctionRef {
+                    function_type: FunctionType::<TS>::CapturingRef(
+                        capture.iter().map(|i| self.get(*i).dupe_ref()).collect(),
+                    ),
+                    ..func.clone()
+                }
+                .into();
+            }
         }
         Ok(increment_index)
     }
