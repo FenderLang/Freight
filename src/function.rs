@@ -106,13 +106,3 @@ impl<TS: TypeSystem> FunctionRef<TS> {
         self.location
     }
 }
-
-impl<TS: TypeSystem> FunctionType<TS> {
-    pub fn can_invoke(&self) -> bool {
-        use FunctionType::*;
-        match self {
-            Static | CapturingRef(_) => true,
-            CapturingDef(_) => false,
-        }
-    }
-}
