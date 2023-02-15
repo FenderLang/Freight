@@ -6,7 +6,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum Operand<TS: TypeSystem> {
     StaticFunctionCall {
-        function: FunctionRef,
+        function: FunctionRef<TS>,
         args: Vec<Operand<TS>>,
     },
     DynamicFunctionCall {
@@ -33,6 +33,7 @@ pub enum Expression<TS: TypeSystem> {
     },
     /// Encapsulate a single operand in an expression
     Eval(Operand<TS>),
+    FunctionCapture(FunctionRef<TS>),
 }
 
 fn expand_function_args<TS: TypeSystem>(
@@ -60,7 +61,7 @@ fn expand_function_args<TS: TypeSystem>(
 
 fn expand_static_function_call_instructions<TS: TypeSystem>(
     instructions: &mut Vec<Instruction<TS>>,
-    function: &FunctionRef,
+    function: &FunctionRef<TS>,
     args: Vec<Operand<TS>>,
 ) -> Result<(), FreightError> {
     let arg_count = args.len();
@@ -158,6 +159,10 @@ impl<TS: TypeSystem> Expression<TS> {
                 expand_first_operand_instructions(operand, &mut instructions)?;
                 instructions.push(Instruction::MoveToReturn(HELD_VALUE_LOCATION));
             }
+            Expression::FunctionCapture(func) => {
+                instructions.push(Instruction::SetReturnRaw(func.into()));
+                instructions.push(Instruction::CaptureValues);
+            },
         }
         Ok(instructions)
     }

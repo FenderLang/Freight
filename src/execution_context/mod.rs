@@ -1,10 +1,19 @@
 use crate::{
-    error::FreightError, execution_context::register_ids::RegisterId, instruction::Instruction,
-    value::Value, BinaryOperator, TypeSystem, UnaryOperator,
+    error::FreightError,
+    execution_context::register_ids::RegisterId,
+    function::{FunctionRef, FunctionType},
+    instruction::Instruction,
+    value::Value,
+    BinaryOperator, TypeSystem, UnaryOperator,
 };
 use std::fmt::Debug;
 
 pub mod register_ids;
+
+pub enum InstructionWrapper<TS: TypeSystem> {
+    RawInstruction(Instruction<TS>),
+    InstructionLocation(usize),
+}
 
 /// Location in stack of the temporary held value used by the expression builder.
 pub const HELD_VALUE_LOCATION: usize = 0;
@@ -36,13 +45,17 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             frames: vec![],
             call_stack: vec![],
             frame: 0,
-            registers: Default::default(),
+            registers: std::array::from_fn(|_| Value::uninitialized_reference()),
             entry_point,
         }
     }
 
     pub fn get_register(&self, register: RegisterId) -> &TS::Value {
         &self.registers[register.id()]
+    }
+
+    pub fn get_register_mut(&mut self, register: RegisterId) -> &mut TS::Value {
+        &mut self.registers[register.id()]
     }
 
     pub fn get(&self, offset: usize) -> &TS::Value {
@@ -69,15 +82,17 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.instruction = instruction;
         // Subtract 1 to account for the held value slot
         for _ in 0..stack_size - arg_count - 1 {
-            self.stack.push(Default::default());
+            self.stack.push(Value::uninitialized_reference());
         }
         self.frame = self.stack.len() - stack_size;
     }
 
-    pub fn execute(&mut self, index: usize) -> Result<bool, FreightError> {
+    pub fn execute(&mut self, ins: InstructionWrapper<TS>) -> Result<bool, FreightError> {
         use Instruction::*;
-        let instruction = &self.instructions[index];
-        let mut increment_index = true;
+        let (instruction, mut increment_index) = match &ins {
+            InstructionWrapper::RawInstruction(i) => (i, false),
+            InstructionWrapper::InstructionLocation(index) => (&self.instructions[*index], true),
+        };
         match instruction {
             Create(offset, creator) => *self.get_mut(*offset) = creator(self),
             Move(from, to) => *self.get_mut(*to) = self.get(*from).clone(),
@@ -95,8 +110,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 increment_index = false;
             }
             InvokeDynamic(arg_count) => {
-                let func = self
-                    .get_register(RegisterId::Return)
+                let func = (&self.registers[0])
                     .cast_to_function()
                     .ok_or(FreightError::InvalidInvocationTarget)?;
                 if *arg_count != func.arg_count {
@@ -104,6 +118,11 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                         expected: func.arg_count,
                         actual: *arg_count,
                     });
+                }
+                match &func.function_type {
+                    FunctionType::Static => (),
+                    FunctionType::CapturingDef(_) => return Err(FreightError::InvalidInvocationTarget),
+                    FunctionType::CapturingRef(values) => self.stack.extend(values.iter().map(|v| v.dupe_ref())),
                 }
                 self.do_invoke(func.arg_count, func.stack_size, func.location);
                 increment_index = false;
@@ -148,6 +167,21 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 )
             }
             SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
+            CaptureValues => {
+                let func = self.get_register(RegisterId::Return)
+                    .cast_to_function()
+                    .ok_or(FreightError::InvalidInvocationTarget)?;
+                let FunctionType::CapturingDef(capture) = &func.function_type else {
+                    return Err(FreightError::InvalidInvocationTarget);
+                };
+                *self.get_register_mut(RegisterId::Return) = FunctionRef {
+                    function_type: FunctionType::<TS>::CapturingRef(
+                        capture.iter().map(|i| self.get(*i).dupe_ref()).collect(),
+                    ),
+                    ..func.clone()
+                }
+                .into();
+            }
         }
         Ok(increment_index)
     }
@@ -156,10 +190,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.instruction = self.entry_point;
         self.stack = vec![];
         for _ in 0..self.initial_stack_size {
-            self.stack.push(Default::default());
+            self.stack.push(Value::uninitialized_reference());
         }
         while self.instruction < self.instructions.len() {
-            if self.execute(self.instruction)? {
+            if self.execute(InstructionWrapper::InstructionLocation(self.instruction))? {
                 self.instruction += 1;
             }
         }

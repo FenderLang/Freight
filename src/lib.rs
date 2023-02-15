@@ -10,8 +10,8 @@ pub mod value;
 pub mod vm_writer;
 pub mod error;
 
-pub trait TypeSystem {
-    type Value: Value;
+pub trait TypeSystem: Clone {
+    type Value: Value<TS = Self>;
     type UnaryOp: UnaryOperator<Self::Value>;
     type BinaryOp: BinaryOperator<Self::Value>;
     type TypeId;

@@ -5,13 +5,25 @@ pub struct FunctionBuilder<TS: TypeSystem> {
     pub(crate) stack_size: usize,
     pub(crate) args: usize,
     pub(crate) instructions: Vec<Instruction<TS>>,
+    pub(crate) function_type: FunctionType<TS>,
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionRef {
+pub enum FunctionType<TS: TypeSystem> {
+    /// A static reference to a function, which can't capture any values
+    Static,
+    /// A reference to a function which captures values, but hasn't been initialized with those values
+    CapturingDef(Vec<usize>),
+    /// A reference to a function which captures values bundled with those captured values
+    CapturingRef(Vec<TS::Value>),
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) arg_count: usize,
     pub(crate) stack_size: usize,
     pub(crate) location: usize,
+    pub(crate) function_type: FunctionType<TS>,
 }
 
 impl<TS: TypeSystem> FunctionBuilder<TS> {
@@ -20,6 +32,16 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
             args,
             stack_size: args + 1,
             instructions: vec![],
+            function_type: FunctionType::Static,
+        }
+    }
+
+    pub fn new_capturing(args: usize, capture: Vec<usize>) -> FunctionBuilder<TS> {
+        Self {
+            args,
+            stack_size: args + capture.len() + 1,
+            instructions: vec![],
+            function_type: FunctionType::CapturingDef(capture),
         }
     }
 
@@ -71,7 +93,7 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
     }
 }
 
-impl FunctionRef {
+impl<TS: TypeSystem> FunctionRef<TS> {
     pub fn arg_count(&self) -> usize {
         self.arg_count
     }
