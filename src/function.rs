@@ -1,4 +1,10 @@
-use crate::{expression::Expression, instruction::Instruction, TypeSystem, error::FreightError};
+use crate::{
+    error::FreightError,
+    execution_context::{Location, RETURN_REGISTER},
+    expression::Expression,
+    instruction::Instruction,
+    TypeSystem,
+};
 
 #[derive(Debug)]
 pub struct FunctionBuilder<TS: TypeSystem> {
@@ -10,11 +16,11 @@ pub struct FunctionBuilder<TS: TypeSystem> {
 
 #[derive(Debug, Clone)]
 pub enum FunctionType<TS: TypeSystem> {
-    /// A static reference to a function, which can't capture any values
+    /// Static reference to a function, which can't capture any values.
     Static,
-    /// A reference to a function which captures values, but hasn't been initialized with those values
+    /// Reference to a function which captures values, but hasn't been initialized with those values.
     CapturingDef(Vec<usize>),
-    /// A reference to a function which captures values bundled with those captured values
+    /// Reference to a function which captures values bundled with those captured values.
     CapturingRef(Vec<TS::Value>),
 }
 
@@ -57,7 +63,10 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
 
     pub fn assign_value(&mut self, var: usize, expr: Expression<TS>) -> Result<(), FreightError> {
         self.evaluate_expression(expr)?;
-        self.instructions.push(Instruction::MoveFromReturn(var));
+        self.instructions.push(Instruction::Move {
+            from: RETURN_REGISTER,
+            to: Location::Addr(var),
+        });
         Ok(())
     }
 

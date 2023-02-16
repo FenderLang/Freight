@@ -1,3 +1,14 @@
+#[derive(Debug, Clone)]
+pub enum Location {
+    Register(RegisterId),
+    Addr(usize), // name options
+                 //
+                 // Stack
+                 // Address
+                 // StackAddress
+                 // MemoryAddress
+}
+
 #[derive(Debug, Clone, Copy, Hash)]
 pub enum RegisterId {
     Return,

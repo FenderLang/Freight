@@ -1,9 +1,10 @@
 use crate::{
+    error::FreightError,
     execution_context::ExecutionContext,
     expression::Expression,
     function::{FunctionBuilder, FunctionRef},
     instruction::Instruction,
-    TypeSystem, error::FreightError,
+    TypeSystem,
 };
 
 #[derive(Debug)]
@@ -53,7 +54,10 @@ impl<TS: TypeSystem> VMWriter<TS> {
         self.stack_size - 1
     }
 
-    pub fn evaluate_expression(&mut self, expression: Expression<TS>) -> Result<usize, FreightError> {
+    pub fn evaluate_expression(
+        &mut self,
+        expression: Expression<TS>,
+    ) -> Result<usize, FreightError> {
         Ok(self.write_instructions(expression.build_instructions()?))
     }
 
