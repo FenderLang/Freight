@@ -10,18 +10,6 @@ use std::fmt::Debug;
 mod location_identifiers;
 pub use location_identifiers::*;
 
-/// `LocationType` referencing temporary held value, in stack, used by the `Expression`.
-pub const HELD_VALUE: Location = Location::Addr(0);
-/// Position in stack of the temporary held value used by the `Expression`.
-const HELD_VALUE_ADDRESS: usize = 0;
-/// `LocationType` of the `Return` register
-pub const RETURN_REGISTER: Location = Location::Register(RegisterId::Return);
-/// `LocationType` of the `RightOperand` register
-pub const RIGHT_OPERAND_REGISTER: Location = Location::Register(RegisterId::Return);
-#[cfg(feature = "popped_register")]
-/// `LocationType` of the `Popped` register
-pub const POPPED_REGISTER: Location = Location::Register(RegisterId::Return);
-
 #[derive(Debug)]
 pub struct ExecutionContext<TS: TypeSystem> {
     stack: Vec<TS::Value>,
