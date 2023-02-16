@@ -81,7 +81,9 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
 
     pub fn return_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {
         self.evaluate_expression(expr)?;
-        self.instructions.push(Instruction::Return(self.stack_size));
+        self.instructions.push(Instruction::Return {
+            stack_size: self.stack_size,
+        });
         Ok(())
     }
 
@@ -89,14 +91,14 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
         let has_return = self.instructions.last().map_or(false, |i| {
             matches!(
                 i,
-                Instruction::Return(_) | Instruction::ReturnConstant(_, _)
+                Instruction::Return { .. } | Instruction::ReturnConstant { .. }
             )
         });
         if !has_return {
-            self.instructions.push(Instruction::ReturnConstant(
-                Default::default(),
-                self.stack_size,
-            ));
+            self.instructions.push(Instruction::ReturnConstant {
+                value: Default::default(),
+                stack_size: self.stack_size,
+            });
         }
         self.instructions
     }

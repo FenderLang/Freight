@@ -75,11 +75,11 @@ fn expand_static_function_call_instructions<TS: TypeSystem>(
         });
     }
     expand_function_args(instructions, args)?;
-    instructions.push(Instruction::Invoke(
+    instructions.push(Instruction::Invoke {
         arg_count,
-        function.stack_size,
-        function.location,
-    ));
+        stack_size: function.stack_size,
+        instruction: function.location,
+    });
     Ok(())
 }
 
@@ -91,7 +91,7 @@ fn expand_dynamic_function_call_instructions<TS: TypeSystem>(
     let arg_count = args.len();
     expand_function_args(instructions, args)?;
     expand_first_operand_instructions(function, instructions)?;
-    instructions.push(Instruction::InvokeDynamic(arg_count));
+    instructions.push(Instruction::InvokeDynamic { arg_count });
     Ok(())
 }
 

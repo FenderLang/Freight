@@ -142,6 +142,23 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                     *self.get_mut(*to) = self.get(*from).clone()
                 }
             },
+            Swap(location_a, location_b) => {
+                match (location_a, location_b) {
+                    (Location::Register(reg1), Location::Register(reg2)) => {
+                        self.registers.swap(reg1.id(), reg2.id())
+                    }
+                    (Location::Register(reg), Location::Addr(addr))
+                    | (Location::Addr(addr), Location::Register(reg)) => std::mem::swap(
+                        &mut self.registers[reg.id()],
+                        &mut self.stack[*addr + self.frame],
+                    ),
+                    (Location::Addr(addr1), Location::Addr(addr2)) => {
+                        self.stack.swap(*addr1 + self.frame, *addr2 + self.frame)
+                    }
+                }
+
+                todo!()
+            }
 
             PushRaw(value) => self.stack.push(value.clone()),
             Push(from) => match from {
@@ -174,11 +191,15 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 )
             }
 
-            Invoke(arg_count, stack_size, instruction) => {
+            Invoke {
+                arg_count,
+                stack_size,
+                instruction,
+            } => {
                 self.do_invoke(*arg_count, *stack_size, *instruction);
                 increment_index = false;
             }
-            InvokeDynamic(arg_count) => {
+            InvokeDynamic { arg_count } => {
                 let func = (&self.registers[0])
                     .cast_to_function()
                     .ok_or(FreightError::InvalidInvocationTarget)?;
@@ -201,9 +222,9 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 increment_index = false;
             }
             InvokeNative(func) => self.registers[RegisterId::Return.id()] = func(self),
-            Return(stack_size) => self.do_return(*stack_size),
-            ReturnConstant(c, stack_size) => {
-                self.registers[RegisterId::Return.id()] = c.clone();
+            Return { stack_size } => self.do_return(*stack_size),
+            ReturnConstant { value, stack_size } => {
+                self.registers[RegisterId::Return.id()] = value.clone();
                 self.do_return(*stack_size);
             }
             CaptureValues => {
