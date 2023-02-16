@@ -50,16 +50,30 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         &mut self.registers[register.id()]
     }
 
-    pub fn get(&self, offset: usize) -> &TS::Value {
+    pub fn get_stack(&self, offset: usize) -> &TS::Value {
         &self.stack[self.frame + offset]
+    }
+
+    pub fn get_stack_mut(&mut self, offset: usize) -> &mut TS::Value {
+        &mut self.stack[self.frame + offset]
+    }
+
+    pub fn get(&self, location: &Location) -> &TS::Value {
+        match location {
+            Location::Register(reg) => self.get_register(*reg),
+            Location::Addr(offset) => self.get_stack(*offset),
+        }
+    }
+
+    pub fn get_mut(&mut self, location: &Location) -> &mut TS::Value {
+        match location {
+            Location::Register(reg) => self.get_register_mut(*reg),
+            Location::Addr(offset) => self.get_stack_mut(*offset),
+        }
     }
 
     pub fn set(&mut self, offset: usize, value: TS::Value) {
         self.stack[self.frame + offset] = value;
-    }
-
-    pub fn get_mut(&mut self, offset: usize) -> &mut TS::Value {
-        &mut self.stack[self.frame + offset]
     }
 
     fn do_return(&mut self, stack_size: usize) {
@@ -109,11 +123,17 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 creation_callback,
             } => match location {
                 Location::Register(reg) => self.registers[reg.id()] = creation_callback(self),
-                Location::Addr(addr) => *self.get_mut(*addr) = creation_callback(self),
+                Location::Addr(addr) => *self.get_stack_mut(*addr) = creation_callback(self),
             },
+
             SetRaw { location, value } => match location {
                 Location::Register(reg) => self.registers[reg.id()] = value.clone(),
                 Location::Addr(addr) => self.set(*addr, value.clone()),
+            },
+
+            Assign { location, value } => match location {
+                Location::Register(reg) => self.registers[reg.id()].assign(value.clone()),
+                Location::Addr(addr) => self.stack[self.frame + addr].assign(value.clone()),
             },
 
             Move { from, to } => match (from, to) {
@@ -121,15 +141,16 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                     self.registers[to.id()] = std::mem::take(&mut self.registers[from.id()])
                 }
                 (Location::Register(from), Location::Addr(to)) => {
-                    *self.get_mut(*to) = std::mem::take(&mut self.registers[from.id()])
+                    *self.get_stack_mut(*to) = std::mem::take(&mut self.registers[from.id()])
                 }
                 (Location::Addr(from), Location::Register(to)) => {
-                    self.registers[to.id()] = self.get(*from).clone()
+                    self.registers[to.id()] = self.get_stack(*from).clone()
                 }
                 (Location::Addr(from), Location::Addr(to)) => {
-                    *self.get_mut(*to) = self.get(*from).clone()
+                    *self.get_stack_mut(*to) = self.get_stack(*from).clone()
                 }
             },
+
             Swap(location_a, location_b) => {
                 match (location_a, location_b) {
                     (Location::Register(reg1), Location::Register(reg2)) => {
@@ -144,14 +165,13 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                         self.stack.swap(*addr1 + self.frame, *addr2 + self.frame)
                     }
                 }
-
                 todo!()
             }
 
             PushRaw(value) => self.stack.push(value.clone()),
             Push(from) => match from {
                 Location::Register(reg) => self.stack.push(self.registers[reg.id()].clone()),
-                Location::Addr(addr) => self.stack.push(self.get(*addr).clone()),
+                Location::Addr(addr) => self.stack.push(self.get_stack(*addr).clone()),
             },
             #[cfg(feature = "popped_register")]
             Pop => self.registers[RegisterId::Popped.id()] = self.stack.pop().unwrap_or_default(),
@@ -170,11 +190,11 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             UnaryOperationWithHeld(unary_op) => {
                 self.registers[RegisterId::Return.id()] =
-                    unary_op.apply_1(self.get(HELD_VALUE_ADDRESS))
+                    unary_op.apply_1(self.get_stack(HELD_VALUE_ADDRESS))
             }
             BinaryOperationWithHeld(binary_op) => {
                 self.registers[RegisterId::Return.id()] = binary_op.apply_2(
-                    self.get(HELD_VALUE_ADDRESS),
+                    self.get_stack(HELD_VALUE_ADDRESS),
                     &self.registers[RegisterId::RightOperand.id()],
                 )
             }
@@ -225,7 +245,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 };
                 *self.get_register_mut(RegisterId::Return) = FunctionRef {
                     function_type: FunctionType::<TS>::CapturingRef(
-                        capture.iter().map(|i| self.get(*i).dupe_ref()).collect(),
+                        capture
+                            .iter()
+                            .map(|i| self.get_stack(*i).dupe_ref())
+                            .collect(),
                     ),
                     ..func.clone()
                 }

@@ -1,13 +1,13 @@
-/// `LocationType` referencing temporary held value, in stack, used by the `Expression`.
-pub const HELD_VALUE: Location = Location::Addr(0);
+/// `Location` referencing temporary held value, in stack, used by the `Expression`.
+pub const HELD_VALUE: Location = Location::Addr(HELD_VALUE_ADDRESS);
 /// Position in stack of the temporary held value used by the `Expression`.
 pub(super) const HELD_VALUE_ADDRESS: usize = 0;
-/// `LocationType` of the `Return` register
+/// `Location` of the `Return` register
 pub const RETURN_REGISTER: Location = Location::Register(RegisterId::Return);
-/// `LocationType` of the `RightOperand` register
+/// `Location` of the `RightOperand` register
 pub const RIGHT_OPERAND_REGISTER: Location = Location::Register(RegisterId::Return);
 #[cfg(feature = "popped_register")]
-/// `LocationType` of the `Popped` register
+/// `Location` of the `Popped` register
 pub const POPPED_REGISTER: Location = Location::Register(RegisterId::Return);
 
 
