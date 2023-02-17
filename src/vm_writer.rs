@@ -1,7 +1,7 @@
 use crate::{
     execution_context::ExecutionContext,
     expression::Expression,
-    function::{FunctionBuilder, FunctionRef},
+    function::{FunctionWriter, FunctionRef},
     instruction::Instruction,
     TypeSystem, error::FreightError,
 };
@@ -35,7 +35,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
         begin
     }
 
-    pub fn include_function(&mut self, function: FunctionBuilder<TS>) -> FunctionRef<TS> {
+    pub fn include_function(&mut self, function: FunctionWriter<TS>) -> FunctionRef<TS> {
         let begin = self.instructions.len();
         let (arg_count, stack_size) = (function.args, function.stack_size);
         let function_type = function.function_type.clone();
