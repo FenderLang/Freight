@@ -31,7 +31,7 @@ pub enum TestTypeId {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct TestValueWrapper(TestValue);
+pub struct TestValueWrapper(pub TestValue);
 
 #[derive(Debug, Clone, Default)]
 pub enum TestValue {

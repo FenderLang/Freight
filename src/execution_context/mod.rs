@@ -50,6 +50,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         }
     }
 
+    pub fn stack_size(&self) -> usize {
+        self.stack.len()
+    }
+
     pub fn get_register(&self, register: RegisterId) -> &TS::Value {
         &self.registers[register.id()]
     }
@@ -88,6 +92,8 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
     }
 
     pub fn execute(&mut self, ins: InstructionWrapper<TS>) -> Result<bool, FreightError> {
+        println!("-------------------");
+        println!("stack: {:?}", &self.stack);
         use Instruction::*;
         let (instruction, mut increment_index) = match &ins {
             InstructionWrapper::RawInstruction(i) => (i, false),
