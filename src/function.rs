@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{expression::Expression, instruction::Instruction, TypeSystem, error::FreightError};
 
 #[derive(Debug)]
@@ -15,7 +17,7 @@ pub enum FunctionType<TS: TypeSystem> {
     /// A reference to a function which captures values, but hasn't been initialized with those values
     CapturingDef(Vec<usize>),
     /// A reference to a function which captures values bundled with those captured values
-    CapturingRef(Vec<TS::Value>),
+    CapturingRef(Rc<Vec<TS::Value>>),
 }
 
 #[derive(Debug, Clone)]

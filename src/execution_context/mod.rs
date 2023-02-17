@@ -6,7 +6,7 @@ use crate::{
     value::Value,
     BinaryOperator, TypeSystem, UnaryOperator,
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, rc::Rc};
 
 pub mod register_ids;
 
@@ -70,13 +70,19 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         &mut self.stack[self.frame + offset]
     }
 
-    pub fn call_function(&mut self, func: FunctionRef<TS>, args: Vec<TS::Value>) -> Result<TS::Value, FreightError> {
+    pub fn call_function(
+        &mut self,
+        func: FunctionRef<TS>,
+        args: Vec<TS::Value>,
+    ) -> Result<TS::Value, FreightError> {
         *self.get_register_mut(RegisterId::Return) = func.into();
         let frame_num = self.frames.len();
         self.stack.push(Value::uninitialized_reference());
         let arg_count = args.len();
         self.stack.extend(args);
-        self.execute(InstructionWrapper::RawInstruction(Instruction::InvokeDynamic(arg_count)))?;
+        self.execute(InstructionWrapper::RawInstruction(
+            Instruction::InvokeDynamic(arg_count),
+        ))?;
         while self.frames.len() > frame_num {
             self.execute_next()?;
         }
@@ -134,8 +140,12 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 }
                 match &func.function_type {
                     FunctionType::Static => (),
-                    FunctionType::CapturingDef(_) => return Err(FreightError::InvalidInvocationTarget),
-                    FunctionType::CapturingRef(values) => self.stack.extend(values.iter().map(|v| v.dupe_ref())),
+                    FunctionType::CapturingDef(_) => {
+                        return Err(FreightError::InvalidInvocationTarget)
+                    }
+                    FunctionType::CapturingRef(values) => {
+                        self.stack.extend(values.iter().map(|v| v.dupe_ref()))
+                    }
                 }
                 self.do_invoke(func.arg_count, func.stack_size, func.location);
                 increment_index = false;
@@ -181,16 +191,17 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             SetHeldRaw(raw_v) => self.set(HELD_VALUE_LOCATION, raw_v.clone()),
             CaptureValues => {
-                let func = self.get_register(RegisterId::Return)
+                let func = self
+                    .get_register(RegisterId::Return)
                     .cast_to_function()
                     .ok_or(FreightError::InvalidInvocationTarget)?;
                 let FunctionType::CapturingDef(capture) = &func.function_type else {
                     return Err(FreightError::InvalidInvocationTarget);
                 };
                 *self.get_register_mut(RegisterId::Return) = FunctionRef {
-                    function_type: FunctionType::<TS>::CapturingRef(
+                    function_type: FunctionType::<TS>::CapturingRef(Rc::new(
                         capture.iter().map(|i| self.get(*i).dupe_ref()).collect(),
-                    ),
+                    )),
                     ..func.clone()
                 }
                 .into();
