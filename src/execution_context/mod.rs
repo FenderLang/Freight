@@ -70,6 +70,19 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         &mut self.stack[self.frame + offset]
     }
 
+    pub fn call_function(&mut self, func: FunctionRef<TS>, args: Vec<TS::Value>) -> Result<TS::Value, FreightError> {
+        *self.get_register_mut(RegisterId::Return) = func.into();
+        let frame_num = self.frames.len();
+        self.stack.push(Value::uninitialized_reference());
+        let arg_count = args.len();
+        self.stack.extend(args);
+        self.execute(InstructionWrapper::RawInstruction(Instruction::InvokeDynamic(arg_count)))?;
+        while self.frames.len() > frame_num {
+            self.execute_next()?;
+        }
+        Ok(std::mem::take(self.get_register_mut(RegisterId::Return)))
+    }
+
     fn do_return(&mut self, stack_size: usize) {
         self.frame = self.frames.pop().unwrap();
         self.instruction = self.call_stack.pop().unwrap();
@@ -186,6 +199,13 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         Ok(increment_index)
     }
 
+    fn execute_next(&mut self) -> Result<(), FreightError> {
+        if self.execute(InstructionWrapper::InstructionLocation(self.instruction))? {
+            self.instruction += 1;
+        }
+        Ok(())
+    }
+
     pub fn run(&mut self) -> Result<(), FreightError> {
         self.instruction = self.entry_point;
         self.stack = vec![];
@@ -193,9 +213,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             self.stack.push(Value::uninitialized_reference());
         }
         while self.instruction < self.instructions.len() {
-            if self.execute(InstructionWrapper::InstructionLocation(self.instruction))? {
-                self.instruction += 1;
-            }
+            self.execute_next();
         }
         Ok(())
     }
