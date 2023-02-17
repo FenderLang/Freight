@@ -47,4 +47,5 @@ fn test_functions() {
         vm.get_register(RegisterId::Return),
         &TestValueWrapper(TestValue::Number(5))
     );
+    assert_eq!(vm.stack_size(), 3);
 }
