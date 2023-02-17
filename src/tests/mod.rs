@@ -1,7 +1,8 @@
 use crate::{
+    execution_context::register_ids::RegisterId,
     expression::{Expression, Operand},
     function::FunctionBuilder,
-    vm_writer::VMWriter, execution_context::register_ids::RegisterId,
+    vm_writer::VMWriter,
 };
 
 use self::type_system::{TestBinaryOperator, TestTypeSystem, TestValue, TestValueWrapper};
@@ -42,5 +43,8 @@ fn test_functions() {
     let main = writer.include_function(main);
     let mut vm = writer.finish(main);
     vm.run().unwrap();
-    assert_eq!(vm.get_register(RegisterId::Return), &TestValueWrapper(TestValue::Number(5)));
+    assert_eq!(
+        vm.get_register(RegisterId::Return),
+        &TestValueWrapper(TestValue::Number(5))
+    );
 }

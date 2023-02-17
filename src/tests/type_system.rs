@@ -1,4 +1,9 @@
-use crate::{TypeSystem, function::FunctionRef, value::Value, operators::{unary::UnaryOperator, binary::BinaryOperator}};
+use crate::{
+    function::FunctionRef,
+    operators::{binary::BinaryOperator, unary::UnaryOperator},
+    value::Value,
+    TypeSystem,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TestTypeSystem;
@@ -15,19 +20,19 @@ impl TypeSystem for TestTypeSystem {
 
 #[derive(Debug, Clone)]
 pub enum TestBinaryOperator {
-    Add
+    Add,
 }
 
 #[derive(Debug, Clone)]
 pub enum TestUnaryOperator {
-    Inc
+    Inc,
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum TestTypeId {
     Number,
     Function,
-    Null
+    Null,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -67,7 +72,7 @@ impl Value for TestValueWrapper {
     fn cast_to_function(&self) -> Option<&FunctionRef<Self::TS>> {
         match self {
             Self(TestValue::Function(f)) => Some(f),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -90,7 +95,9 @@ impl UnaryOperator<TestValueWrapper> for TestUnaryOperator {
 impl BinaryOperator<TestValueWrapper> for TestBinaryOperator {
     fn apply_2(&self, a: &TestValueWrapper, b: &TestValueWrapper) -> TestValueWrapper {
         match (self, &a.0, &b.0) {
-            (Self::Add, TestValue::Number(a), TestValue::Number(b)) => TestValueWrapper(TestValue::Number(a + b)),
+            (Self::Add, TestValue::Number(a), TestValue::Number(b)) => {
+                TestValueWrapper(TestValue::Number(a + b))
+            }
             _ => panic!("Attempt to add non-integer type"),
         }
     }
