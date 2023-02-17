@@ -1,6 +1,6 @@
 use crate::{TypeSystem, function::FunctionRef, value::Value, operators::{unary::UnaryOperator, binary::BinaryOperator}};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TestTypeSystem;
 
 impl TypeSystem for TestTypeSystem {
@@ -30,10 +30,10 @@ pub enum TestTypeId {
     Null
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TestValueWrapper(pub TestValue);
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum TestValue {
     Number(i64),
     Function(FunctionRef<TestTypeSystem>),

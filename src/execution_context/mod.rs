@@ -75,6 +75,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
     }
 
     fn do_return(&mut self, stack_size: usize) {
+        if self.frames.is_empty() {
+            self.instruction = self.instructions.len();
+            return;
+        }
         self.frame = self.frames.pop().unwrap();
         self.instruction = self.call_stack.pop().unwrap();
         self.stack.drain((self.stack.len() - stack_size)..);
@@ -92,8 +96,6 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
     }
 
     pub fn execute(&mut self, ins: InstructionWrapper<TS>) -> Result<bool, FreightError> {
-        println!("-------------------");
-        println!("stack: {:?}", &self.stack);
         use Instruction::*;
         let (instruction, mut increment_index) = match &ins {
             InstructionWrapper::RawInstruction(i) => (i, false),

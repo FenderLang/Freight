@@ -1,7 +1,7 @@
 use crate::{
     expression::{Expression, Operand},
     function::FunctionBuilder,
-    vm_writer::VMWriter,
+    vm_writer::VMWriter, execution_context::register_ids::RegisterId,
 };
 
 use self::type_system::{TestBinaryOperator, TestTypeSystem, TestValue, TestValueWrapper};
@@ -34,13 +34,13 @@ fn test_functions() {
         Expression::Eval(Operand::ValueRaw(TestValueWrapper(TestValue::Number(2)))),
     )
     .unwrap();
-    main.evaluate_expression(Expression::Eval(Operand::StaticFunctionCall {
+    main.return_expression(Expression::Eval(Operand::StaticFunctionCall {
         function: add,
         args: vec![Operand::ValueRef(x), Operand::ValueRef(y)],
     }))
     .unwrap();
     let main = writer.include_function(main);
-    let entry_point = main.location;
-    let mut vm = writer.finish(entry_point);
+    let mut vm = writer.finish(main);
     vm.run().unwrap();
+    assert_eq!(vm.get_register(RegisterId::Return), &TestValueWrapper(TestValue::Number(5)));
 }
