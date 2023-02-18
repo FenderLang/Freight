@@ -1,6 +1,12 @@
-use std::rc::Rc;
+use crate::{
+    error::FreightError,
+    execution_context::{Location, RETURN_REGISTER},
+    expression::Expression,
+    instruction::Instruction,
+    TypeSystem,
+};
 
-use crate::{expression::Expression, instruction::Instruction, TypeSystem, error::FreightError};
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
@@ -12,9 +18,9 @@ pub struct FunctionWriter<TS: TypeSystem> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionType<TS: TypeSystem> {
-    /// A static reference to a function, which can't capture any values
+    /// Static reference to a function, which can't capture any values.
     Static,
-    /// A reference to a function which captures values, but hasn't been initialized with those values
+    /// Reference to a function which captures values, but hasn't been initialized with those values.
     CapturingDef(Vec<usize>),
     /// A reference to a function which captures values bundled with those captured values
     CapturingRef(Rc<Vec<TS::Value>>),
@@ -59,7 +65,10 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
 
     pub fn assign_value(&mut self, var: usize, expr: Expression<TS>) -> Result<(), FreightError> {
         self.evaluate_expression(expr)?;
-        self.instructions.push(Instruction::MoveFromReturn(var));
+        self.instructions.push(Instruction::Move {
+            from: RETURN_REGISTER,
+            to: Location::Addr(var),
+        });
         Ok(())
     }
 
@@ -74,7 +83,9 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
 
     pub fn return_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {
         self.evaluate_expression(expr)?;
-        self.instructions.push(Instruction::Return(self.stack_size));
+        self.instructions.push(Instruction::Return {
+            stack_size: self.stack_size,
+        });
         Ok(())
     }
 
@@ -82,14 +93,14 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
         let has_return = self.instructions.last().map_or(false, |i| {
             matches!(
                 i,
-                Instruction::Return(_) | Instruction::ReturnConstant(_, _)
+                Instruction::Return { .. } | Instruction::ReturnConstant { .. }
             )
         });
         if !has_return {
-            self.instructions.push(Instruction::ReturnConstant(
-                Default::default(),
-                self.stack_size,
-            ));
+            self.instructions.push(Instruction::ReturnConstant {
+                value: Default::default(),
+                stack_size: self.stack_size,
+            });
         }
         self.instructions
     }

@@ -1,9 +1,8 @@
 use crate::{
     execution_context::ExecutionContext,
-    expression::Expression,
-    function::{FunctionWriter, FunctionRef},
+    function::{FunctionRef, FunctionWriter},
     instruction::Instruction,
-    TypeSystem, error::FreightError,
+    TypeSystem,
 };
 
 #[derive(Debug)]
@@ -23,7 +22,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
             instructions: vec![],
         }
     }
-    
+
     pub fn write_instructions(
         &mut self,
         instructions: impl IntoIterator<Item = Instruction<TS>>,
@@ -47,6 +46,10 @@ impl<TS: TypeSystem> VMWriter<TS> {
     }
 
     pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionContext<TS> {
-        ExecutionContext::new(self.instructions, entry_point.stack_size, entry_point.location)
+        ExecutionContext::new(
+            self.instructions,
+            entry_point.stack_size,
+            entry_point.location,
+        )
     }
 }

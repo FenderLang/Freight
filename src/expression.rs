@@ -1,6 +1,9 @@
 use crate::{
-    error::FreightError, execution_context::HELD_VALUE_LOCATION, function::FunctionRef,
-    instruction::Instruction, TypeSystem,
+    error::FreightError,
+    execution_context::{Location, HELD_VALUE, RETURN_REGISTER, RIGHT_OPERAND_REGISTER},
+    function::FunctionRef,
+    instruction::Instruction,
+    TypeSystem,
 };
 
 #[derive(Clone, Debug)]
@@ -45,15 +48,15 @@ fn expand_function_args<TS: TypeSystem>(
         match arg {
             Operand::StaticFunctionCall { function, args } => {
                 expand_static_function_call_instructions(instructions, &function, args)?;
-                instructions.push(Instruction::PushFromReturn);
+                instructions.push(Instruction::Push(RETURN_REGISTER));
             }
-            Operand::ValueRef(addr) => instructions.push(Instruction::Push(addr)),
+            Operand::ValueRef(addr) => instructions.push(Instruction::Push(Location::Addr(addr))),
             Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
             Operand::Expression(builder) => instructions.extend(builder.build_instructions()?),
             Operand::DynamicFunctionCall { function, args } => {
                 expand_dynamic_function_call_instructions(instructions, *function, args)?;
-                instructions.push(Instruction::PushFromReturn);
-            },
+                instructions.push(Instruction::Push(RETURN_REGISTER));
+            }
         }
     }
     Ok(())
@@ -72,11 +75,11 @@ fn expand_static_function_call_instructions<TS: TypeSystem>(
         });
     }
     expand_function_args(instructions, args)?;
-    instructions.push(Instruction::Invoke(
+    instructions.push(Instruction::Invoke {
         arg_count,
-        function.stack_size,
-        function.location,
-    ));
+        stack_size: function.stack_size,
+        instruction: function.location,
+    });
     Ok(())
 }
 
@@ -88,7 +91,7 @@ fn expand_dynamic_function_call_instructions<TS: TypeSystem>(
     let arg_count = args.len();
     expand_function_args(instructions, args)?;
     expand_first_operand_instructions(function, instructions)?;
-    instructions.push(Instruction::InvokeDynamic(arg_count));
+    instructions.push(Instruction::InvokeDynamic { arg_count });
     Ok(())
 }
 
@@ -99,18 +102,33 @@ fn expand_first_operand_instructions<TS: TypeSystem>(
     match operand {
         Operand::StaticFunctionCall { function, args } => {
             expand_static_function_call_instructions(instructions, &function, args)?;
-            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
+            instructions.push(Instruction::Move {
+                from: RETURN_REGISTER,
+                to: HELD_VALUE,
+            })
         }
-        Operand::ValueRef(addr) => instructions.push(Instruction::Move(addr, HELD_VALUE_LOCATION)),
-        Operand::ValueRaw(val) => instructions.push(Instruction::SetHeldRaw(val)),
+        Operand::ValueRef(addr) => instructions.push(Instruction::Move {
+            from: Location::Addr(addr),
+            to: HELD_VALUE,
+        }),
+        Operand::ValueRaw(val) => instructions.push(Instruction::SetRaw {
+            location: HELD_VALUE,
+            value: val,
+        }),
         Operand::Expression(builder) => {
             instructions.append(&mut builder.build_instructions()?);
-            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
+            instructions.push(Instruction::Move {
+                from: RETURN_REGISTER,
+                to: HELD_VALUE,
+            })
         }
         Operand::DynamicFunctionCall { function, args } => {
             expand_dynamic_function_call_instructions(instructions, *function, args)?;
-            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
-        },
+            instructions.push(Instruction::Move {
+                from: RETURN_REGISTER,
+                to: HELD_VALUE,
+            })
+        }
     };
     Ok(())
 }
@@ -125,13 +143,25 @@ fn expand_second_operand_instructions<TS: TypeSystem>(
         }
         Operand::Expression(builder) => {
             instructions.append(&mut builder.build_instructions()?);
-            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
+            instructions.push(Instruction::Move {
+                from: RETURN_REGISTER,
+                to: HELD_VALUE,
+            })
         }
-        Operand::ValueRef(addr) => instructions.push(Instruction::MoveRightOperand(addr)),
-        Operand::ValueRaw(val) => instructions.push(Instruction::SetRightOperandRaw(val)),
+        Operand::ValueRef(addr) => instructions.push(Instruction::Move {
+            from: Location::Addr(addr),
+            to: RIGHT_OPERAND_REGISTER,
+        }),
+        Operand::ValueRaw(val) => instructions.push(Instruction::SetRaw {
+            location: RIGHT_OPERAND_REGISTER,
+            value: val,
+        }),
         Operand::DynamicFunctionCall { function, args } => {
             expand_dynamic_function_call_instructions(instructions, *function, args)?;
-            instructions.push(Instruction::MoveFromReturn(HELD_VALUE_LOCATION))
+            instructions.push(Instruction::Move {
+                from: RETURN_REGISTER,
+                to: HELD_VALUE,
+            })
         }
     }
     Ok(())
@@ -157,12 +187,18 @@ impl<TS: TypeSystem> Expression<TS> {
             }
             Expression::Eval(operand) => {
                 expand_first_operand_instructions(operand, &mut instructions)?;
-                instructions.push(Instruction::MoveToReturn(HELD_VALUE_LOCATION));
+                instructions.push(Instruction::Move {
+                    from: HELD_VALUE,
+                    to: RETURN_REGISTER,
+                });
             }
             Expression::FunctionCapture(func) => {
-                instructions.push(Instruction::SetReturnRaw(func.into()));
+                instructions.push(Instruction::SetRaw {
+                    location: RETURN_REGISTER,
+                    value: func.into(),
+                });
                 instructions.push(Instruction::CaptureValues);
-            },
+            }
         }
         Ok(instructions)
     }
