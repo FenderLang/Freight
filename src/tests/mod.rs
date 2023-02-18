@@ -1,7 +1,7 @@
 use crate::{
     execution_context::register_ids::RegisterId,
     expression::{Expression, Operand},
-    function::FunctionBuilder,
+    function::FunctionWriter,
     vm_writer::VMWriter,
 };
 
@@ -12,7 +12,7 @@ mod type_system;
 #[test]
 fn test_functions() {
     let mut writer = VMWriter::<TestTypeSystem>::new();
-    let mut add = FunctionBuilder::new(2);
+    let mut add = FunctionWriter::new(2);
     let a = add.argument_stack_offset(0);
     let b = add.argument_stack_offset(1);
     add.return_expression(Expression::BinaryOpEval {
@@ -22,7 +22,7 @@ fn test_functions() {
     })
     .unwrap();
     let add = writer.include_function(add);
-    let mut main = FunctionBuilder::new(0);
+    let mut main = FunctionWriter::new(0);
     let x = main.create_variable();
     let y = main.create_variable();
     main.assign_value(
