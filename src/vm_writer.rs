@@ -1,8 +1,6 @@
 use crate::{
-    error::FreightError,
     execution_context::ExecutionContext,
-    expression::Expression,
-    function::{FunctionBuilder, FunctionRef},
+    function::{FunctionRef, FunctionWriter},
     instruction::Instruction,
     TypeSystem,
 };
@@ -10,7 +8,6 @@ use crate::{
 #[derive(Debug)]
 pub struct VMWriter<TS: TypeSystem> {
     instructions: Vec<Instruction<TS>>,
-    stack_size: usize,
 }
 
 impl<TS: TypeSystem> Default for VMWriter<TS> {
@@ -23,7 +20,6 @@ impl<TS: TypeSystem> VMWriter<TS> {
     pub fn new() -> VMWriter<TS> {
         Self {
             instructions: vec![],
-            stack_size: 1,
         }
     }
 
@@ -36,7 +32,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
         begin
     }
 
-    pub fn include_function(&mut self, function: FunctionBuilder<TS>) -> FunctionRef<TS> {
+    pub fn include_function(&mut self, function: FunctionWriter<TS>) -> FunctionRef<TS> {
         let begin = self.instructions.len();
         let (arg_count, stack_size) = (function.args, function.stack_size);
         let function_type = function.function_type.clone();
@@ -49,19 +45,11 @@ impl<TS: TypeSystem> VMWriter<TS> {
         }
     }
 
-    pub fn declare_variable(&mut self) -> usize {
-        self.stack_size += 1;
-        self.stack_size - 1
-    }
-
-    pub fn evaluate_expression(
-        &mut self,
-        expression: Expression<TS>,
-    ) -> Result<usize, FreightError> {
-        Ok(self.write_instructions(expression.build_instructions()?))
-    }
-
-    pub fn finish(self, entry_point: usize) -> ExecutionContext<TS> {
-        ExecutionContext::new(self.instructions, self.stack_size, entry_point)
+    pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionContext<TS> {
+        ExecutionContext::new(
+            self.instructions,
+            entry_point.stack_size,
+            entry_point.location,
+        )
     }
 }

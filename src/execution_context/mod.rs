@@ -5,7 +5,7 @@ use crate::{
     value::Value,
     BinaryOperator, TypeSystem, UnaryOperator,
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, rc::Rc};
 
 mod location_identifiers;
 pub use location_identifiers::*;
@@ -42,6 +42,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         }
     }
 
+    pub fn stack_size(&self) -> usize {
+        self.stack.len()
+    }
+
     pub fn get_register(&self, register: RegisterId) -> &TS::Value {
         &self.registers[register.id()]
     }
@@ -76,7 +80,30 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.stack[self.frame + offset] = value;
     }
 
+    pub fn call_function(
+        &mut self,
+        func: FunctionRef<TS>,
+        args: Vec<TS::Value>,
+    ) -> Result<TS::Value, FreightError> {
+        *self.get_register_mut(RegisterId::Return) = func.into();
+        let frame_num = self.frames.len();
+        self.stack.push(Value::uninitialized_reference());
+        let arg_count = args.len();
+        self.stack.extend(args);
+        self.execute(InstructionWrapper::RawInstruction(
+            Instruction::InvokeDynamic { arg_count },
+        ))?;
+        while self.frames.len() > frame_num {
+            self.execute_next()?;
+        }
+        Ok(std::mem::take(self.get_register_mut(RegisterId::Return)))
+    }
+
     fn do_return(&mut self, stack_size: usize) {
+        if self.frames.is_empty() {
+            self.instruction = self.instructions.len();
+            return;
+        }
         self.frame = self.frames.pop().unwrap();
         self.instruction = self.call_stack.pop().unwrap();
         self.stack.drain((self.stack.len() - stack_size)..);
@@ -96,6 +123,13 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
 
 /// execution functionality
 impl<TS: TypeSystem> ExecutionContext<TS> {
+    fn execute_next(&mut self) -> Result<(), FreightError> {
+        if self.execute(InstructionWrapper::InstructionLocation(self.instruction))? {
+            self.instruction += 1;
+        }
+        Ok(())
+    }
+
     pub fn run(&mut self) -> Result<(), FreightError> {
         self.instruction = self.entry_point;
         self.stack = vec![];
@@ -103,9 +137,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             self.stack.push(Value::uninitialized_reference());
         }
         while self.instruction < self.instructions.len() {
-            if self.execute(InstructionWrapper::InstructionLocation(self.instruction))? {
-                self.instruction += 1;
-            }
+            self.execute_next()?;
         }
         Ok(())
     }
@@ -244,12 +276,12 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                     return Err(FreightError::InvalidInvocationTarget);
                 };
                 *self.get_register_mut(RegisterId::Return) = FunctionRef {
-                    function_type: FunctionType::<TS>::CapturingRef(
+                    function_type: FunctionType::<TS>::CapturingRef(Rc::new(
                         capture
                             .iter()
                             .map(|i| self.get_stack(*i).dupe_ref())
                             .collect(),
-                    ),
+                    )),
                     ..func.clone()
                 }
                 .into();

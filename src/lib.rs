@@ -14,5 +14,8 @@ pub trait TypeSystem: Clone {
     type Value: Value<TS = Self>;
     type UnaryOp: UnaryOperator<Self::Value>;
     type BinaryOp: BinaryOperator<Self::Value>;
-    type TypeId;
+    type TypeId: Eq;
 }
+
+#[cfg(test)]
+mod tests;
