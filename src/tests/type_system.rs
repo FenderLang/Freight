@@ -37,10 +37,10 @@ pub enum TestTypeId {
     Null,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct TestValueWrapper(pub TestValue);
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum TestValue {
     Number(i64),
     Function(FunctionRef<TestTypeSystem>),

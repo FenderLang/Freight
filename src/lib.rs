@@ -14,7 +14,7 @@ pub trait TypeSystem: Clone + 'static {
     type Value: Value<TS = Self>;
     type UnaryOp: UnaryOperator<Self::Value>;
     type BinaryOp: BinaryOperator<Self::Value>;
-    type TypeId: Eq;
+    type TypeId: PartialEq;
 }
 
 #[cfg(test)]

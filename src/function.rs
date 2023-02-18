@@ -16,7 +16,7 @@ pub struct FunctionWriter<TS: TypeSystem> {
     pub(crate) function_type: FunctionType<TS>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FunctionType<TS: TypeSystem> {
     /// Static reference to a function, which can't capture any values.
     Static,
@@ -26,7 +26,7 @@ pub enum FunctionType<TS: TypeSystem> {
     CapturingRef(Rc<Vec<TS::Value>>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) arg_count: usize,
     pub(crate) stack_size: usize,
