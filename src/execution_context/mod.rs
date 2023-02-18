@@ -124,6 +124,14 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
 /// execution functionality
 impl<TS: TypeSystem> ExecutionContext<TS> {
     fn execute_next(&mut self) -> Result<(), FreightError> {
+        #[cfg(feature = "debug_mode")]
+        {
+            println!("stack frame: {:?}", &self.stack[self.frame..]);
+            println!("stack context: {}", self.frames.len());
+            println!("instruction: {:?}", self.instructions[self.instruction]);
+            println!("instruction index: {}", self.instruction);
+            println!("-----------");
+        }
         if self.execute(InstructionWrapper::InstructionLocation(self.instruction))? {
             self.instruction += 1;
         }
@@ -134,6 +142,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.instruction = self.entry_point;
         self.stack = vec![];
         for _ in 0..self.initial_stack_size {
+
             self.stack.push(Value::uninitialized_reference());
         }
         while self.instruction < self.instructions.len() {
@@ -235,7 +244,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             BinaryOperationWithHeld(binary_op) => {
                 self.registers[RegisterId::Return.id()] = binary_op.apply_2(
-                    self.get_stack(HELD_VALUE_ADDRESS),
+                        self.get_stack(HELD_VALUE_ADDRESS),
                     &self.registers[RegisterId::RightOperand.id()],
                 )
             }
