@@ -9,7 +9,6 @@ use crate::{
 #[derive(Debug)]
 pub struct VMWriter<TS: TypeSystem> {
     instructions: Vec<Instruction<TS>>,
-    stack_size: usize,
 }
 
 impl<TS: TypeSystem> Default for VMWriter<TS> {
@@ -22,10 +21,9 @@ impl<TS: TypeSystem> VMWriter<TS> {
     pub fn new() -> VMWriter<TS> {
         Self {
             instructions: vec![],
-            stack_size: 1,
         }
     }
-
+    
     pub fn write_instructions(
         &mut self,
         instructions: impl IntoIterator<Item = Instruction<TS>>,
@@ -48,16 +46,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
         }
     }
 
-    pub fn declare_variable(&mut self) -> usize {
-        self.stack_size += 1;
-        self.stack_size - 1
-    }
-
-    pub fn evaluate_expression(&mut self, expression: Expression<TS>) -> Result<usize, FreightError> {
-        Ok(self.write_instructions(expression.build_instructions()?))
-    }
-
-    pub fn finish(self, entry_point: usize) -> ExecutionContext<TS> {
-        ExecutionContext::new(self.instructions, self.stack_size, entry_point)
+    pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionContext<TS> {
+        ExecutionContext::new(self.instructions, entry_point.stack_size, entry_point.location)
     }
 }

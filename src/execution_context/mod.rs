@@ -50,6 +50,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         }
     }
 
+    pub fn stack_size(&self) -> usize {
+        self.stack.len()
+    }
+
     pub fn get_register(&self, register: RegisterId) -> &TS::Value {
         &self.registers[register.id()]
     }
@@ -90,6 +94,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
     }
 
     fn do_return(&mut self, stack_size: usize) {
+        if self.frames.is_empty() {
+            self.instruction = self.instructions.len();
+            return;
+        }
         self.frame = self.frames.pop().unwrap();
         self.instruction = self.call_stack.pop().unwrap();
         self.stack.drain((self.stack.len() - stack_size)..);
