@@ -9,7 +9,6 @@ pub enum InstructionWrapper<TS: TypeSystem> {
     InstructionLocation(usize),
 }
 
-
 pub enum Instruction<TS: TypeSystem> {
     /// A function callback is used to generate a value that will be placed in `location`
     ///
@@ -29,9 +28,17 @@ pub enum Instruction<TS: TypeSystem> {
     /// Call the `Value::assign` function on the `value` at the given `location`.
     ///
     /// This is for implementations to handle assigning values themselves so they can handle things such as internal mutability.
-    Assign {
+    AssignRaw {
         location: Location,
         value: TS::Value,
+    },
+
+    /// Assign a value from one location to another
+    ///
+    /// This is for implementations to handle assigning values themselves so they can handle things such as internal mutability.
+    Assign {
+        from: Location,
+        to: Location,
     },
 
     /// Move value from `from` to `to`.
@@ -111,10 +118,15 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
                 .field("location", location)
                 .field("value", value)
                 .finish(),
-            Self::Assign { location, value } => f
-                .debug_struct("Assign")
+            Self::AssignRaw { location, value } => f
+                .debug_struct("AssignRaw")
                 .field("location", location)
                 .field("value", value)
+                .finish(),
+            Self::Assign { from, to } => f
+                .debug_struct("Assign")
+                .field("from", from)
+                .field("to", to)
                 .finish(),
             Self::Move { from, to } => f
                 .debug_struct("Move")

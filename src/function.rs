@@ -65,7 +65,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
 
     pub fn assign_value(&mut self, var: usize, expr: Expression<TS>) -> Result<(), FreightError> {
         self.evaluate_expression(expr)?;
-        self.instructions.push(Instruction::Move {
+        self.instructions.push(Instruction::Assign {
             from: RETURN_REGISTER,
             to: Location::Addr(var),
         });

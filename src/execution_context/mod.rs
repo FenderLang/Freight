@@ -163,10 +163,19 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 Location::Addr(addr) => self.set(*addr, value.clone()),
             },
 
-            Assign { location, value } => match location {
+            AssignRaw { location, value } => match location {
                 Location::Register(reg) => self.registers[reg.id()].assign(value.clone()),
                 Location::Addr(addr) => self.stack[self.frame + addr].assign(value.clone()),
             },
+
+            Assign { from, to } => {
+                let new_value = self.get(from).clone();
+                let dest = match to {
+                    Location::Register(reg) => &mut self.registers[reg.id()],
+                    Location::Addr(addr) => &mut self.stack[self.frame + addr],
+                };
+                dest.assign(new_value);
+            }
 
             Move { from, to } => match (from, to) {
                 (Location::Register(from), Location::Register(to)) => {
