@@ -1,7 +1,9 @@
+use std::rc::Rc;
+
 use crate::{expression::Expression, instruction::Instruction, TypeSystem, error::FreightError};
 
 #[derive(Debug)]
-pub struct FunctionBuilder<TS: TypeSystem> {
+pub struct FunctionWriter<TS: TypeSystem> {
     pub(crate) stack_size: usize,
     pub(crate) args: usize,
     pub(crate) instructions: Vec<Instruction<TS>>,
@@ -15,7 +17,7 @@ pub enum FunctionType<TS: TypeSystem> {
     /// A reference to a function which captures values, but hasn't been initialized with those values
     CapturingDef(Vec<usize>),
     /// A reference to a function which captures values bundled with those captured values
-    CapturingRef(Vec<TS::Value>),
+    CapturingRef(Rc<Vec<TS::Value>>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,8 +28,8 @@ pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) function_type: FunctionType<TS>,
 }
 
-impl<TS: TypeSystem> FunctionBuilder<TS> {
-    pub fn new(args: usize) -> FunctionBuilder<TS> {
+impl<TS: TypeSystem> FunctionWriter<TS> {
+    pub fn new(args: usize) -> FunctionWriter<TS> {
         Self {
             args,
             stack_size: args + 1,
@@ -36,7 +38,7 @@ impl<TS: TypeSystem> FunctionBuilder<TS> {
         }
     }
 
-    pub fn new_capturing(args: usize, capture: Vec<usize>) -> FunctionBuilder<TS> {
+    pub fn new_capturing(args: usize, capture: Vec<usize>) -> FunctionWriter<TS> {
         Self {
             args,
             stack_size: args + capture.len() + 1,
