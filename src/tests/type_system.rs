@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{
     function::FunctionRef,
     operators::{binary::BinaryOperator, unary::UnaryOperator},

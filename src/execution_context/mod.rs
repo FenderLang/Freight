@@ -1,6 +1,6 @@
 use crate::{
     error::FreightError,
-    function::{FunctionRef, FunctionType},
+    function::{FunctionRef, FunctionType, InvokeNative},
     instruction::{Instruction, InstructionWrapper},
     value::Value,
     BinaryOperator, TypeSystem, UnaryOperator,
@@ -142,13 +142,17 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.instruction = self.entry_point;
         self.stack = vec![];
         for _ in 0..self.initial_stack_size {
-
             self.stack.push(Value::uninitialized_reference());
         }
         while self.instruction < self.instructions.len() {
             self.execute_next()?;
         }
         Ok(())
+    }
+
+    pub fn do_native_invoke(&mut self, func: Rc<dyn InvokeNative<TS>>, arg_count: usize) {
+        let args = self.stack.drain(self.stack.len() - arg_count..).collect();
+        self.registers[RegisterId::Return.id()] = func.invoke(self, args);
     }
 
     pub fn execute(&mut self, ins: InstructionWrapper<TS>) -> Result<bool, FreightError> {
@@ -244,7 +248,7 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             }
             BinaryOperationWithHeld(binary_op) => {
                 self.registers[RegisterId::Return.id()] = binary_op.apply_2(
-                        self.get_stack(HELD_VALUE_ADDRESS),
+                    self.get_stack(HELD_VALUE_ADDRESS),
                     &self.registers[RegisterId::RightOperand.id()],
                 )
             }
@@ -279,7 +283,13 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 self.do_invoke(func.arg_count, func.stack_size, func.location);
                 increment_index = false;
             }
-            InvokeNative(func) => self.registers[RegisterId::Return.id()] = func(self),
+            InvokeNative {
+                function,
+                arg_count,
+            } => {
+                let args = self.stack.drain(self.stack.len() - arg_count..).collect();
+                self.registers[RegisterId::Return.id()] = function.clone().invoke(self, args);
+            }
             Return { stack_size } => self.do_return(*stack_size),
             ReturnConstant { value, stack_size } => {
                 self.registers[RegisterId::Return.id()] = value.clone();

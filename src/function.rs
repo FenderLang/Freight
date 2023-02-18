@@ -1,6 +1,6 @@
 use crate::{
     error::FreightError,
-    execution_context::{Location, RETURN_REGISTER},
+    execution_context::{ExecutionContext, Location, RETURN_REGISTER},
     expression::Expression,
     instruction::Instruction,
     TypeSystem,
@@ -117,5 +117,21 @@ impl<TS: TypeSystem> FunctionRef<TS> {
 
     pub fn address(&self) -> usize {
         self.location
+    }
+}
+
+pub trait InvokeNative<TS: TypeSystem> {
+    fn invoke(&self, ctx: &mut ExecutionContext<TS>, args: Vec<TS::Value>) -> TS::Value;
+}
+
+impl<const N: usize, TS: TypeSystem> InvokeNative<TS>
+    for fn(&mut ExecutionContext<TS>, [TS::Value; N]) -> TS::Value
+{
+    fn invoke(
+        &self,
+        ctx: &mut ExecutionContext<TS>,
+        args: Vec<<TS as TypeSystem>::Value>,
+    ) -> <TS as TypeSystem>::Value {
+        self(ctx, args.try_into().expect("Incorrect argument count"))
     }
 }

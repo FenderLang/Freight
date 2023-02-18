@@ -1,8 +1,9 @@
 use crate::{
     execution_context::{ExecutionContext, Location},
+    function::InvokeNative,
     TypeSystem,
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, rc::Rc};
 
 pub enum InstructionWrapper<TS: TypeSystem> {
     RawInstruction(Instruction<TS>),
@@ -92,7 +93,10 @@ pub enum Instruction<TS: TypeSystem> {
         arg_count: usize,
     },
 
-    InvokeNative(fn(&mut ExecutionContext<TS>) -> TS::Value),
+    InvokeNative {
+        function: Rc<dyn InvokeNative<TS>>,
+        arg_count: usize,
+    },
     Return {
         stack_size: usize,
     },
@@ -159,7 +163,13 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
             Self::InvokeDynamic { arg_count } => {
                 f.debug_tuple("InvokeDynamic").field(arg_count).finish()
             }
-            Self::InvokeNative(_arg0) => f.debug_tuple("InvokeNative").finish(),
+            Self::InvokeNative {
+                function: _,
+                arg_count,
+            } => f
+                .debug_struct("InvokeNative")
+                .field("arg_count", arg_count)
+                .finish(),
             Self::Return { stack_size } => f.debug_tuple("Return").field(stack_size).finish(),
             Self::ReturnConstant { value, stack_size } => f
                 .debug_tuple("ReturnConstant")

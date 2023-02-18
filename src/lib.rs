@@ -10,7 +10,7 @@ pub mod operators;
 pub mod value;
 pub mod vm_writer;
 
-pub trait TypeSystem: Clone {
+pub trait TypeSystem: Clone + 'static {
     type Value: Value<TS = Self>;
     type UnaryOp: UnaryOperator<Self::Value>;
     type BinaryOp: BinaryOperator<Self::Value>;

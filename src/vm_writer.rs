@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     execution_context::ExecutionContext,
     function::{FunctionRef, FunctionWriter},
@@ -43,6 +45,21 @@ impl<TS: TypeSystem> VMWriter<TS> {
             location: begin,
             function_type,
         }
+    }
+
+    pub fn include_native_function<const N: usize>(
+        &mut self,
+        f: fn(&mut ExecutionContext<TS>, [TS::Value; N]) -> TS::Value,
+    ) -> FunctionRef<TS> {
+        let mut func = FunctionWriter::new(N);
+        func.write_instructions([
+            Instruction::InvokeNative {
+                function: Rc::new(f),
+                arg_count: N,
+            },
+            Instruction::Return { stack_size: 1 },
+        ]);
+        self.include_function(func)
     }
 
     pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionContext<TS> {
