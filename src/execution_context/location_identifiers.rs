@@ -5,10 +5,10 @@ pub(super) const HELD_VALUE_ADDRESS: usize = 0;
 /// `Location` of the `Return` register
 pub const RETURN_REGISTER: Location = Location::Register(RegisterId::Return);
 /// `Location` of the `RightOperand` register
-pub const RIGHT_OPERAND_REGISTER: Location = Location::Register(RegisterId::Return);
+pub const RIGHT_OPERAND_REGISTER: Location = Location::Register(RegisterId::RightOperand);
 #[cfg(feature = "popped_register")]
 /// `Location` of the `Popped` register
-pub const POPPED_REGISTER: Location = Location::Register(RegisterId::Return);
+pub const POPPED_REGISTER: Location = Location::Register(RegisterId::Popped);
 
 
 

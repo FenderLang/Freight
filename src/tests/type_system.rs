@@ -75,6 +75,10 @@ impl Value for TestValueWrapper {
             _ => None,
         }
     }
+
+    fn assign(&mut self, value: <Self::TS as TypeSystem>::Value) {
+        self.0 = value.0;
+    }
 }
 
 impl From<FunctionRef<TestTypeSystem>> for TestValueWrapper {
