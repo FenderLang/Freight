@@ -87,7 +87,6 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
         Function {
             expressions: self.expressions,
             stack_size: self.stack_size,
-            arg_count: self.args,
         }
     }
 }

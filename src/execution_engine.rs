@@ -13,7 +13,6 @@ use crate::{
 pub struct Function<TS: TypeSystem> {
     pub(crate) expressions: Vec<Expression<TS>>,
     pub(crate) stack_size: usize,
-    pub(crate) arg_count: usize,
 }
 
 pub struct ExecutionEngine<TS: TypeSystem> {
