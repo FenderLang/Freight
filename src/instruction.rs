@@ -73,6 +73,7 @@ pub enum Instruction<TS: TypeSystem> {
     UnaryOperation {
         operator: TS::UnaryOp,
         operand: Location,
+        dest: Location,
     },
 
     /// Uses the given binary operation on the values in the two specified locations
@@ -80,6 +81,7 @@ pub enum Instruction<TS: TypeSystem> {
         operator: TS::BinaryOp,
         left: Location,
         right: Location,
+        dest: Location,
     },
 
     //TODO: @Redempt add comments for the remaining instructions
@@ -138,18 +140,20 @@ impl<TS: TypeSystem> Instruction<TS> {
             Push(from) => ctx.stack.push(ctx.get(from).clone()),
             Pop(to) => *ctx.get_mut(to) = ctx.stack.pop().unwrap_or_default(),
 
-            UnaryOperation { operator, operand } => {
-                *ctx.get_register_mut(RegisterId::Return) = operator.apply_1(ctx.get(operand));
+            UnaryOperation {
+                operator,
+                operand,
+                dest,
+            } => {
+                *ctx.get_mut(dest) = operator.apply_1(ctx.get(operand));
             }
 
             BinaryOperation {
                 operator,
                 left,
                 right,
-            } => {
-                *ctx.get_register_mut(RegisterId::Return) =
-                    operator.apply_2(ctx.get(left), ctx.get(right))
-            }
+                dest,
+            } => *ctx.get_mut(dest) = operator.apply_2(ctx.get(left), ctx.get(right)),
 
             Invoke {
                 arg_count,
@@ -257,20 +261,27 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
             Self::PushRaw(arg0) => f.debug_tuple("PushRaw").field(arg0).finish(),
             Self::Push(arg0) => f.debug_tuple("Push").field(arg0).finish(),
             Self::Pop(to) => f.debug_tuple("Pop").field(to).finish(),
-            Self::UnaryOperation { operator, operand } => f
+            Self::UnaryOperation {
+                operator,
+                operand,
+                dest,
+            } => f
                 .debug_struct("UnaryOperation")
                 .field("operator", operator)
                 .field("operand", operand)
+                .field("dest", dest)
                 .finish(),
             Self::BinaryOperation {
                 operator,
                 left,
                 right,
+                dest,
             } => f
                 .debug_struct("BinaryOperation")
                 .field("operator", operator)
                 .field("left", left)
                 .field("right", right)
+                .field("dest", dest)
                 .finish(),
             Self::Invoke {
                 arg_count,

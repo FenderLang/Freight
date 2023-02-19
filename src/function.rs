@@ -68,16 +68,12 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     }
 
     pub fn assign_value(&mut self, var: usize, expr: Expression<TS>) -> Result<(), FreightError> {
-        self.evaluate_expression(expr)?;
-        self.instructions.push(Instruction::Assign {
-            from: RETURN_REGISTER,
-            to: Location::Stack(var),
-        });
+        self.instructions.extend(expr.build(Location::Stack(var))?);
         Ok(())
     }
 
     pub fn evaluate_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {
-        self.instructions.extend(expr.build()?);
+        self.instructions.extend(expr.build(RETURN_REGISTER)?);
         Ok(())
     }
 

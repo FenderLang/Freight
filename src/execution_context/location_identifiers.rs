@@ -3,14 +3,14 @@ pub const RETURN_REGISTER: Location = Location::Register(RegisterId::Return);
 /// `Location` of the `RightOperand` register
 pub const RIGHT_OPERAND_REGISTER: Location = Location::Register(RegisterId::RightOperand);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Location {
     Register(RegisterId),
     Stack(usize),
     Const(usize),
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum RegisterId {
     Return,
     RightOperand,
