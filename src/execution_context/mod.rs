@@ -10,7 +10,7 @@ pub use location_identifiers::*;
 pub struct ExecutionContext<TS: TypeSystem> {
     pub(crate) stack: Vec<TS::Value>,
     pub(crate) instruction: usize,
-    pub(crate) instructions: Rc<Vec<Instruction<TS>>>,
+    pub(crate) instructions: Rc<[Instruction<TS>]>,
     pub(crate) frames: Vec<usize>,
     pub(crate) call_stack: Vec<usize>,
     pub(crate) frame: usize,
@@ -28,7 +28,7 @@ impl<'a, 'b, TS: TypeSystem> ExecutionContext<TS> {
         ExecutionContext {
             stack: Vec::with_capacity(stack_size),
             instruction: 0,
-            instructions: Rc::new(instructions),
+            instructions: instructions.into(),
             frames: vec![],
             call_stack: vec![],
             frame: 0,
