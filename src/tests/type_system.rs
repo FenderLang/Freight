@@ -107,8 +107,4 @@ impl BinaryOperator<TestValueWrapper> for TestBinaryOperator {
             _ => panic!("Attempt to add non-integer type"),
         }
     }
-
-    fn priority(&self) -> usize {
-        0
-    }
 }

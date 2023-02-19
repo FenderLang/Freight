@@ -1,7 +1,7 @@
 use crate::{
     error::FreightError,
     execution_context::{ExecutionContext, Location, RegisterId},
-    function::{FunctionRef, FunctionType, InvokeNative},
+    function::{FunctionType, InvokeNative},
     operators::{binary::BinaryOperator, unary::UnaryOperator},
     value::Value,
     TypeSystem,
@@ -122,7 +122,7 @@ impl<TS: TypeSystem> Instruction<TS> {
             AssignRaw { location, value } => ctx.get_mut(location).assign(value.clone()),
 
             Assign { from, to } => {
-                let new_value = ctx.get(from).clone();
+                let new_value: TS::Value = ctx.get(from).clone();
                 ctx.get_mut(to).assign(new_value);
             }
 
@@ -207,16 +207,15 @@ impl<TS: TypeSystem> Instruction<TS> {
                 let FunctionType::CapturingDef(capture) = &func.function_type else {
                     return Err(FreightError::InvalidInvocationTarget);
                 };
-                *ctx.get_register_mut(RegisterId::Return) = FunctionRef {
-                    function_type: FunctionType::<TS>::CapturingRef(Rc::new(
-                        capture
-                            .iter()
-                            .map(|i| ctx.get_stack(*i).dupe_ref())
-                            .collect(),
-                    )),
-                    ..func.clone()
-                }
-                .into();
+                let mut func = func.clone();
+                func.function_type = FunctionType::CapturingRef(
+                    capture
+                        .iter()
+                        .map(|i| ctx.get_stack(*i).dupe_ref())
+                        .collect::<Vec<_>>()
+                        .into(),
+                );
+                *ctx.get_register_mut(RegisterId::Return) = func.into();
             }
         }
         Ok(increment_index)

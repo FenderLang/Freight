@@ -7,6 +7,7 @@ use crate::{
 };
 
 use std::rc::Rc;
+use std::fmt::Debug;
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
@@ -16,7 +17,7 @@ pub struct FunctionWriter<TS: TypeSystem> {
     pub(crate) function_type: FunctionType<TS>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum FunctionType<TS: TypeSystem> {
     /// Static reference to a function, which can't capture any values.
     Static,
@@ -24,6 +25,16 @@ pub enum FunctionType<TS: TypeSystem> {
     CapturingDef(Vec<usize>),
     /// A reference to a function which captures values bundled with those captured values
     CapturingRef(Rc<Vec<TS::Value>>),
+}
+
+impl<TS: TypeSystem> Debug for FunctionType<TS> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FunctionType::Static => f.write_str("Static"),
+            FunctionType::CapturingDef(_) => f.write_str("CapturingDef"),
+            FunctionType::CapturingRef(_) => f.write_str("CapturingRef"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -78,6 +89,10 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn evaluate_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {
         self.instructions.extend(expr.build()?);
         Ok(())
+    }
+
+    pub fn captured_stack_offset(&self, captured: usize) -> usize {
+        captured + 1
     }
 
     pub fn argument_stack_offset(&self, arg: usize) -> usize {
