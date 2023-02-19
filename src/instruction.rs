@@ -46,13 +46,13 @@ pub enum Instruction<TS: TypeSystem> {
     },
 
     /// Move value from `from` to `to`.
-    ///
-    /// Moving from a register (`Location::Register`) will take the value from the register and leave the register with a null value.
-    ///
-    /// Moving from a stack location will always clone the value, leaving the original value intact.
-    ///
-    /// If you wish to move from a register without the value becoming null consider `Swap` or `Push`.
     Move {
+        from: Location,
+        to: Location,
+    },
+
+    /// Clone value from `from` to `to`.
+    Copy {
         from: Location,
         to: Location,
     },
@@ -130,6 +130,7 @@ impl<TS: TypeSystem> Instruction<TS> {
                 let val = std::mem::take(ctx.get_mut(from));
                 *ctx.get_mut(to) = val;
             }
+            Copy { from, to } => *ctx.get_mut(to) = ctx.get(from).clone(),
             Swap(location_a, location_b) => {
                 let a = std::mem::take(ctx.get_mut(location_a));
                 *ctx.get_mut(location_a) = std::mem::take(ctx.get_mut(location_b));
@@ -244,6 +245,11 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
                 .finish(),
             Self::Assign { from, to } => f
                 .debug_struct("Assign")
+                .field("from", from)
+                .field("to", to)
+                .finish(),
+            Self::Copy { from, to } => f
+                .debug_struct("Copy")
                 .field("from", from)
                 .field("to", to)
                 .finish(),

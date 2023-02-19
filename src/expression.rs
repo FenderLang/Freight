@@ -10,6 +10,7 @@ use crate::{
 pub enum Expression<TS: TypeSystem> {
     RawValue(TS::Value),
     Variable(usize),
+    Global(usize),
     BinaryOpEval(TS::BinaryOp, Box<Expression<TS>>, Box<Expression<TS>>),
     UnaryOpEval(TS::UnaryOp, Box<Expression<TS>>),
     StaticFunctionCall(FunctionRef<TS>, Vec<Expression<TS>>),
@@ -87,6 +88,10 @@ fn build_evaluate<TS: TypeSystem>(
                 Instruction::CaptureValues,
             ]);
         }
+        Expression::Global(addr) => instructions.push(Instruction::Copy {
+            from: Location::Const(addr),
+            to: RETURN_REGISTER,
+        }),
     }
     Ok(())
 }
