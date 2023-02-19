@@ -104,23 +104,3 @@ impl<TS: TypeSystem> FunctionRef<TS> {
         self.location
     }
 }
-
-pub trait InvokeNative<TS: TypeSystem> {
-    fn invoke(
-        &self,
-        ctx: &mut ExecutionEngine<TS>,
-        args: Vec<TS::Value>,
-    ) -> Result<TS::Value, FreightError>;
-}
-
-impl<const N: usize, TS: TypeSystem> InvokeNative<TS>
-    for fn(&mut ExecutionEngine<TS>, [TS::Value; N]) -> Result<TS::Value, FreightError>
-{
-    fn invoke(
-        &self,
-        engine: &mut ExecutionEngine<TS>,
-        args: Vec<<TS as TypeSystem>::Value>,
-    ) -> Result<<TS as TypeSystem>::Value, FreightError> {
-        self(engine, args.try_into().expect("Incorrect argument count"))
-    }
-}

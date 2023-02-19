@@ -1,11 +1,34 @@
 use crate::{
-    function::{FunctionRef, InvokeNative},
-    TypeSystem,
+    error::FreightError, execution_engine::ExecutionEngine, function::FunctionRef, TypeSystem,
 };
 
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::Deref};
 
-pub struct NativeFunction<TS: TypeSystem>(pub(crate) Box<dyn InvokeNative<TS>>);
+pub struct NativeFunction<TS: TypeSystem>(
+    fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>,
+);
+
+impl<TS: TypeSystem> NativeFunction<TS> {
+    pub fn new(
+        value: fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>,
+    ) -> Self {
+        Self(value)
+    }
+}
+
+impl<TS: TypeSystem> Deref for NativeFunction<TS> {
+    type Target = fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<TS: TypeSystem> Debug for NativeFunction<TS> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("NativeFunction").finish()
+    }
+}
 
 #[derive(Debug)]
 pub enum Expression<TS: TypeSystem> {
@@ -20,10 +43,4 @@ pub enum Expression<TS: TypeSystem> {
     FunctionCapture(FunctionRef<TS>),
     AssignStack(usize, Box<Expression<TS>>),
     AssignGlobal(usize, Box<Expression<TS>>),
-}
-
-impl<TS: TypeSystem> Debug for NativeFunction<TS> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("NativeFunction").finish()
-    }
 }

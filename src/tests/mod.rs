@@ -21,18 +21,16 @@ fn test_functions() {
     main.assign_value(
         x,
         Expression::RawValue(TestValueWrapper(TestValue::Number(3))),
-    )
-    .unwrap();
+    );
     main.assign_value(
         y,
         Expression::RawValue(TestValueWrapper(TestValue::Number(2))),
-    )
-    .unwrap();
+    );
     main.return_expression(Expression::StaticFunctionCall(
         add,
         vec![Expression::Variable(x), Expression::Variable(y)],
     ));
     let main = writer.include_function(main);
-    let vm = writer.finish(main);
+    let mut vm = writer.finish(main);
     assert_eq!(vm.run().unwrap(), TestValueWrapper(TestValue::Number(5)));
 }

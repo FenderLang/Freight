@@ -19,11 +19,15 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) globals: Vec<TS::Value>,
     pub(crate) functions: Rc<[Function<TS>]>,
     pub(crate) entry_point: usize,
+    pub(crate) stack_size: usize,
 }
 
 impl<TS: TypeSystem> ExecutionEngine<TS> {
     pub fn run(&mut self) -> Result<TS::Value, FreightError> {
-        self.functions.clone()[self.entry_point].call(self, vec![])
+        self.functions.clone()[self.entry_point].call(
+            self,
+            vec![Value::uninitialized_reference(); self.stack_size],
+        )
     }
 
     pub fn call(
@@ -125,7 +129,7 @@ fn evaluate<TS: TypeSystem>(
                 .iter()
                 .map(|a| evaluate(a, engine, stack))
                 .collect::<Result<Vec<_>, _>>()?;
-            func.0.invoke(engine, collected)?
+            func(engine, collected)?
         }
         Expression::AssignGlobal(addr, expr) => {
             let val = evaluate(expr, engine, stack)?;

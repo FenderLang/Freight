@@ -47,12 +47,12 @@ impl<TS: TypeSystem> VMWriter<TS> {
 
     pub fn include_native_function<const N: usize>(
         &mut self,
-        f: fn(&mut ExecutionEngine<TS>, [TS::Value; N]) -> Result<TS::Value, FreightError>,
+        f: NativeFunction<TS>,
     ) -> FunctionRef<TS> {
         let mut func = FunctionWriter::new(N);
         let args = (0..N).map(|n| Expression::Variable(n)).collect();
         func.evaluate_expression(Expression::NativeFunctionCall(
-            NativeFunction(Box::new(f)),
+            f,
             args,
         ));
         self.include_function(func)
@@ -63,6 +63,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
             globals: vec![Value::uninitialized_reference(); self.globals],
             functions: self.functions.into(),
             entry_point: entry_point.location,
+            stack_size: entry_point.stack_size,
         }
     }
 }
