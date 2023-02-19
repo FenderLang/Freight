@@ -14,7 +14,7 @@ pub const POPPED_REGISTER: Location = Location::Register(RegisterId::Popped);
 pub enum Location {
     Register(RegisterId),
     Stack(usize),
-    //    Const(usize),
+    Const(usize),
 }
 
 #[derive(Debug, Clone, Copy, Hash)]

@@ -62,6 +62,7 @@ impl<'a, 'b, TS: TypeSystem> ExecutionContext<TS> {
         match location {
             Location::Register(reg) => self.get_register(*reg),
             Location::Stack(offset) => self.get_stack(*offset),
+            Location::Const(address) => &self.stack[*address],
         }
     }
 
@@ -69,6 +70,7 @@ impl<'a, 'b, TS: TypeSystem> ExecutionContext<TS> {
         match location {
             Location::Register(reg) => self.get_register_mut(*reg),
             Location::Stack(offset) => self.get_stack_mut(*offset),
+            Location::Const(address) => &mut self.stack[*address],
         }
     }
 
