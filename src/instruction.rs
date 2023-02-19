@@ -183,7 +183,7 @@ impl<TS: TypeSystem> Instruction<TS> {
                     }
                     FunctionType::CapturingRef(values) => {
                         captures = values.len();
-                        ctx.stack.extend(values.iter().map(|v| dbg!(v).dupe_ref()));
+                        ctx.stack.extend(values.iter().map(|v| v.dupe_ref()));
                     }
                 }
                 ctx.do_invoke(func.arg_count, captures, func.stack_size, func.location);
