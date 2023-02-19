@@ -198,8 +198,8 @@ impl<TS: TypeSystem> Instruction<TS> {
                 function,
                 arg_count,
             } => {
-                let args = ctx.stack.drain(ctx.stack.len() - arg_count..).collect();
-                ctx.registers[RegisterId::Return.id()] = function.clone().invoke(ctx, args)?;
+//                let args = ctx.stack.drain(ctx.stack.len() - arg_count..).collect();
+//                ctx.registers[RegisterId::Return.id()] = function.clone().invoke(ctx, args)?;
             }
             Return { stack_size } => ctx.do_return(*stack_size),
             ReturnConstant { value, stack_size } => {

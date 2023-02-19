@@ -12,10 +12,8 @@ fn test_functions() {
     let b = add.argument_stack_offset(1);
     add.return_expression(Expression::BinaryOpEval(
         TestBinaryOperator::Add,
-        Expression::Variable(a).into(),
-        Expression::Variable(b).into(),
-    ))
-    .unwrap();
+        [Expression::Variable(a), Expression::Variable(b)].into(),
+    ));
     let add = writer.include_function(add);
     let mut main = FunctionWriter::new(0);
     let x = main.create_variable();
@@ -33,10 +31,8 @@ fn test_functions() {
     main.return_expression(Expression::StaticFunctionCall(
         add,
         vec![Expression::Variable(x), Expression::Variable(y)],
-    ))
-    .unwrap();
+    ));
     let main = writer.include_function(main);
-    let mut vm = writer.finish(main);
-    assert_eq!(vm.run().unwrap(), &TestValueWrapper(TestValue::Number(5)));
-    assert_eq!(vm.stack_size(), 2);
+    let vm = writer.finish(main);
+    assert_eq!(vm.run().unwrap(), TestValueWrapper(TestValue::Number(5)));
 }

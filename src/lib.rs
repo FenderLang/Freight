@@ -11,6 +11,7 @@ pub mod operators;
 pub mod value;
 pub mod vm_writer;
 pub mod expression;
+pub mod execution_engine;
 
 pub trait TypeSystem: Debug + Clone + 'static {
     type Value: Value<TS = Self>;

@@ -144,6 +144,9 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
                 );
                 func.into()
             }
+            Expression::AssignStack(_, _) => todo!(),
+            Expression::NativeFunctionCall(_, _) => todo!(),
+            Expression::AssignGlobal(_, _) => todo!(),
         };
         Ok(result)
     }

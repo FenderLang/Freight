@@ -1,16 +1,16 @@
-use std::rc::Rc;
-
 use crate::{
     error::FreightError,
-    execution_context::ExecutionContext,
+    execution_engine::{ExecutionEngine, Function},
+    expression::{Expression, NativeFunction},
     function::{FunctionRef, FunctionWriter},
-    instruction::Instruction,
+    value::Value,
     TypeSystem,
 };
 
 #[derive(Debug)]
 pub struct VMWriter<TS: TypeSystem> {
-    instructions: Vec<Instruction<TS>>,
+    functions: Vec<Function<TS>>,
+    globals: usize,
 }
 
 impl<TS: TypeSystem> Default for VMWriter<TS> {
@@ -22,52 +22,47 @@ impl<TS: TypeSystem> Default for VMWriter<TS> {
 impl<TS: TypeSystem> VMWriter<TS> {
     pub fn new() -> VMWriter<TS> {
         Self {
-            instructions: vec![],
+            functions: vec![],
+            globals: 0,
         }
     }
 
-    pub fn write_instructions(
-        &mut self,
-        instructions: impl IntoIterator<Item = Instruction<TS>>,
-    ) -> usize {
-        let begin = self.instructions.len();
-        self.instructions.extend(instructions);
-        begin
+    pub fn create_global(&mut self) -> usize {
+        self.globals += 1;
+        self.globals - 1
     }
 
     pub fn include_function(&mut self, function: FunctionWriter<TS>) -> FunctionRef<TS> {
-        let begin = self.instructions.len();
+        let location = self.functions.len();
         let (arg_count, stack_size) = (function.args, function.stack_size);
         let function_type = function.function_type.clone();
-        self.instructions.extend(function.build_instructions());
+        self.functions.push(function.build());
         FunctionRef {
             arg_count,
             stack_size,
-            location: begin,
+            location,
             function_type,
         }
     }
 
     pub fn include_native_function<const N: usize>(
         &mut self,
-        f: fn(&mut ExecutionContext<TS>, [TS::Value; N]) -> Result<TS::Value, FreightError>,
+        f: fn(&mut ExecutionEngine<TS>, [TS::Value; N]) -> Result<TS::Value, FreightError>,
     ) -> FunctionRef<TS> {
         let mut func = FunctionWriter::new(N);
-        func.write_instructions([
-            Instruction::InvokeNative {
-                function: Rc::new(f),
-                arg_count: N,
-            },
-            Instruction::Return { stack_size: 0 },
-        ]);
+        let args = (0..N).map(|n| Expression::Variable(n)).collect();
+        func.evaluate_expression(Expression::NativeFunctionCall(
+            NativeFunction(Box::new(f)),
+            args,
+        ));
         self.include_function(func)
     }
 
-    pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionContext<TS> {
-        ExecutionContext::new(
-            self.instructions,
-            entry_point.stack_size,
-            entry_point.location,
-        )
+    pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionEngine<TS> {
+        ExecutionEngine {
+            globals: vec![Value::uninitialized_reference(); self.globals],
+            functions: self.functions.into(),
+            entry_point: entry_point.location,
+        }
     }
 }
