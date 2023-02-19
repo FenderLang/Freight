@@ -118,28 +118,13 @@ impl<TS: TypeSystem> Instruction<TS> {
             Create {
                 location,
                 creation_callback,
-            } => match location {
-                Location::Register(reg) => ctx.registers[reg.id()] = creation_callback(ctx),
-                Location::Stack(addr) => *ctx.get_stack_mut(*addr) = creation_callback(ctx),
-            },
-
-            SetRaw { location, value } => match location {
-                Location::Register(reg) => ctx.registers[reg.id()] = value.clone(),
-                Location::Stack(addr) => ctx.set(*addr, value.clone()),
-            },
-
-            AssignRaw { location, value } => match location {
-                Location::Register(reg) => ctx.registers[reg.id()].assign(value.clone()),
-                Location::Stack(addr) => ctx.stack[ctx.frame + addr].assign(value.clone()),
-            },
+            } => *ctx.get_mut(location) = creation_callback(ctx),
+            SetRaw { location, value } => *ctx.get_mut(location) = value.clone(),
+            AssignRaw { location, value } => ctx.get_mut(location).assign(value.clone()),
 
             Assign { from, to } => {
                 let new_value = ctx.get(from).clone();
-                let dest = match to {
-                    Location::Register(reg) => &mut ctx.registers[reg.id()],
-                    Location::Stack(addr) => &mut ctx.stack[ctx.frame + addr],
-                };
-                dest.assign(new_value);
+                ctx.get_mut(to).assign(new_value);
             }
 
             Move { from, to } => {
@@ -150,30 +135,14 @@ impl<TS: TypeSystem> Instruction<TS> {
                 let a = std::mem::take(ctx.get_mut(location_a));
                 *ctx.get_mut(location_a) = std::mem::take(ctx.get_mut(location_b));
                 *ctx.get_mut(location_b) = a;
-                //                match (location_a, location_b) {
-                //                    (Location::Register(reg1), Location::Register(reg2)) => {
-                //                        ctx.registers.swap(reg1.id(), reg2.id())
-                //                    }
-                //                    (Location::Register(reg), Location::Stack(addr))
-                //                    | (Location::Stack(addr), Location::Register(reg)) => std::mem::swap(
-                //                            &mut ctx.registers[reg.id()],
-                //                        &mut ctx.stack[*addr + ctx.frame],
-                //                    ),
-                //                    (Location::Stack(addr1), Location::Stack(addr2)) => {
-                //                        ctx.stack.swap(*addr1 + ctx.frame, *addr2 + ctx.frame)
-                //                    }
-                //                }
             }
 
             PushRaw(value) => ctx.stack.push(value.clone()),
-            Push(from) => match from {
-                Location::Register(reg) => ctx.stack.push(ctx.registers[reg.id()].clone()),
-                Location::Stack(addr) => ctx.stack.push(ctx.get_stack(*addr).clone()),
-            },
+            Push(from) => ctx.stack.push(ctx.get(from).clone()),
             #[cfg(feature = "popped_register")]
-            Pop => ctx.registers[RegisterId::Popped.id()] = ctx.stack.pop().unwrap_or_default(),
+            Pop => *ctx.get_register_mut(RegisterId::Popped) = ctx.stack.pop().unwrap_or_default(),
             #[cfg(not(feature = "popped_register"))]
-            Pop => ctx.registers[RegisterId::Return.id()] = ctx.stack.pop().unwrap_or_default(),
+            Pop => *ctx.get_register_mut(RegisterId::Return) = ctx.stack.pop().unwrap_or_default(),
 
             UnaryOperation(unary_op) => {
                 ctx.registers[RegisterId::Return.id()] =
