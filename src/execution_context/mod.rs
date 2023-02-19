@@ -88,12 +88,12 @@ impl<'a, 'b, TS: TypeSystem> ExecutionContext<TS> {
         self.stack.drain((self.stack.len() - stack_size)..);
     }
 
-    pub(crate) fn do_invoke(&mut self, arg_count: usize, stack_size: usize, instruction: usize) {
+    pub(crate) fn do_invoke(&mut self, arg_count: usize, captures: usize, stack_size: usize, instruction: usize) {
         self.call_stack.push(self.instruction);
         self.frames.push(self.frame);
         self.instruction = instruction;
         // Subtract 1 to account for the held value slot
-        for _ in 0..stack_size - arg_count - 1 {
+        for _ in 0..stack_size - arg_count - captures - 1 {
             self.stack.push(Value::uninitialized_reference());
         }
         self.frame = self.stack.len() - stack_size;

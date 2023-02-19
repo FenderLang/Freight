@@ -162,7 +162,7 @@ impl<TS: TypeSystem> Instruction<TS> {
                 stack_size,
                 instruction,
             } => {
-                ctx.do_invoke(*arg_count, *stack_size, *instruction);
+                ctx.do_invoke(*arg_count, 0, *stack_size, *instruction);
                 increment_index = false;
             }
             InvokeDynamic { arg_count } => {
@@ -175,16 +175,18 @@ impl<TS: TypeSystem> Instruction<TS> {
                         actual: *arg_count,
                     });
                 }
+                let mut captures = 0;
                 match &func.function_type {
                     FunctionType::Static => (),
                     FunctionType::CapturingDef(_) => {
-                        return Err(FreightError::InvalidInvocationTarget)
+                        return Err(FreightError::InvalidInvocationTarget);
                     }
                     FunctionType::CapturingRef(values) => {
-                        ctx.stack.extend(values.iter().map(|v| v.dupe_ref()))
+                        captures = values.len();
+                        ctx.stack.extend(values.iter().map(|v| dbg!(v).dupe_ref()));
                     }
                 }
-                ctx.do_invoke(func.arg_count, func.stack_size, func.location);
+                ctx.do_invoke(func.arg_count, captures, func.stack_size, func.location);
                 increment_index = false;
             }
             InvokeNative {

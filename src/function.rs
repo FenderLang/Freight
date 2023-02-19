@@ -17,7 +17,7 @@ pub struct FunctionWriter<TS: TypeSystem> {
     pub(crate) function_type: FunctionType<TS>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum FunctionType<TS: TypeSystem> {
     /// Static reference to a function, which can't capture any values.
     Static,
@@ -25,16 +25,6 @@ pub enum FunctionType<TS: TypeSystem> {
     CapturingDef(Vec<usize>),
     /// A reference to a function which captures values bundled with those captured values
     CapturingRef(Rc<Vec<TS::Value>>),
-}
-
-impl<TS: TypeSystem> Debug for FunctionType<TS> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            FunctionType::Static => f.write_str("Static"),
-            FunctionType::CapturingDef(_) => f.write_str("CapturingDef"),
-            FunctionType::CapturingRef(_) => f.write_str("CapturingRef"),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
