@@ -1,6 +1,6 @@
 use crate::{
     error::FreightError,
-    execution_context::{ExecutionContext, Location, RegisterId, HELD_VALUE_ADDRESS},
+    execution_context::{ExecutionContext, Location, RegisterId},
     function::{FunctionRef, FunctionType, InvokeNative},
     operators::{binary::BinaryOperator, unary::UnaryOperator},
     value::Value,
@@ -72,19 +72,18 @@ pub enum Instruction<TS: TypeSystem> {
     /// This will move the popped value into the `Popped` register instead.
     Pop,
 
-    /// Uses the unary operation given on the value in the `Return` register, the result is left in the `Return` register
-    UnaryOperation(TS::UnaryOp),
+    /// Uses the unary operation given on the value in the specified location
+    UnaryOperation {
+        operator: TS::UnaryOp,
+        operand: Location,
+    },
 
-    /// Uses the given binary operation on the value in the `Return` and `RightOperand` registers, the result is left in the `Return` register
-    BinaryOperation(TS::BinaryOp),
-
-    /// Uses the unary operation given on the value in the `HELD_VALUE` stack location, the result is left in the `Return` register
-    UnaryOperationWithHeld(TS::UnaryOp),
-
-    /// Uses the given binary operation on the value in the `HELD_VALUE` stack location and `RightOperand` register, the result is left in the `Return` register.
-    ///
-    /// The `HELD_VALUE` is used as the first/left operand of the operation.
-    BinaryOperationWithHeld(TS::BinaryOp),
+    /// Uses the given binary operation on the values in the two specified locations
+    BinaryOperation {
+        operator: TS::BinaryOp,
+        left: Location,
+        right: Location,
+    },
 
     //TODO: @Redempt add comments for the remaining instructions
     Invoke {
@@ -144,25 +143,17 @@ impl<TS: TypeSystem> Instruction<TS> {
             #[cfg(not(feature = "popped_register"))]
             Pop => *ctx.get_register_mut(RegisterId::Return) = ctx.stack.pop().unwrap_or_default(),
 
-            UnaryOperation(unary_op) => {
-                ctx.registers[RegisterId::Return.id()] =
-                    unary_op.apply_1(&ctx.registers[RegisterId::Return.id()]);
+            UnaryOperation { operator, operand } => {
+                *ctx.get_register_mut(RegisterId::Return) = operator.apply_1(ctx.get(operand));
             }
-            BinaryOperation(binary_op) => {
-                ctx.registers[RegisterId::Return.id()] = binary_op.apply_2(
-                    &ctx.registers[RegisterId::Return.id()],
-                    &ctx.registers[RegisterId::RightOperand.id()],
-                );
-            }
-            UnaryOperationWithHeld(unary_op) => {
-                ctx.registers[RegisterId::Return.id()] =
-                    unary_op.apply_1(ctx.get_stack(HELD_VALUE_ADDRESS))
-            }
-            BinaryOperationWithHeld(binary_op) => {
-                ctx.registers[RegisterId::Return.id()] = binary_op.apply_2(
-                    ctx.get_stack(HELD_VALUE_ADDRESS),
-                    &ctx.registers[RegisterId::RightOperand.id()],
-                )
+
+            BinaryOperation {
+                operator,
+                left,
+                right,
+            } => {
+                *ctx.get_register_mut(RegisterId::Return) =
+                    operator.apply_2(ctx.get(left), ctx.get(right))
             }
 
             Invoke {
@@ -265,14 +256,20 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
             Self::PushRaw(arg0) => f.debug_tuple("PushRaw").field(arg0).finish(),
             Self::Push(arg0) => f.debug_tuple("Push").field(arg0).finish(),
             Self::Pop => write!(f, "Pop"),
-            Self::UnaryOperation(arg0) => f.debug_tuple("UnaryOperation").field(arg0).finish(),
-            Self::BinaryOperation(arg0) => f.debug_tuple("BinaryOperation").field(arg0).finish(),
-            Self::UnaryOperationWithHeld(arg0) => {
-                f.debug_tuple("UnaryOperationWithHeld").field(arg0).finish()
-            }
-            Self::BinaryOperationWithHeld(arg0) => f
-                .debug_tuple("BinaryOperationWithHeld")
-                .field(arg0)
+            Self::UnaryOperation { operator, operand } => f
+                .debug_struct("UnaryOperation")
+                .field("operator", operator)
+                .field("operand", operand)
+                .finish(),
+            Self::BinaryOperation {
+                operator,
+                left,
+                right,
+            } => f
+                .debug_struct("BinaryOperation")
+                .field("operator", operator)
+                .field("left", left)
+                .field("right", right)
                 .finish(),
             Self::Invoke {
                 arg_count,

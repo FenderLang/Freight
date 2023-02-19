@@ -76,7 +76,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     }
 
     pub fn evaluate_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {
-        self.instructions.extend(expr.build_instructions()?);
+        self.instructions.extend(expr.build()?);
         Ok(())
     }
 
