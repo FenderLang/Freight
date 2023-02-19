@@ -1,9 +1,5 @@
 use crate::{
-    error::FreightError,
-    function::{FunctionRef, FunctionType, InvokeNative},
-    instruction::{Instruction, InstructionWrapper},
-    value::Value,
-    BinaryOperator, TypeSystem, UnaryOperator,
+    error::FreightError, function::FunctionRef, instruction::Instruction, value::Value, TypeSystem,
 };
 use std::{fmt::Debug, rc::Rc};
 
@@ -11,32 +7,34 @@ mod location_identifiers;
 pub use location_identifiers::*;
 
 #[derive(Debug)]
-pub struct ExecutionContext<'a: 'b, 'b, TS: TypeSystem> where Self: 'a {
+pub struct ExecutionContext<TS: TypeSystem> {
     pub(crate) stack: Vec<TS::Value>,
     pub(crate) instruction: usize,
-    pub(crate) instructions: &'b [Instruction<TS>],
+    pub(crate) instructions: Rc<Vec<Instruction<TS>>>,
     pub(crate) frames: Vec<usize>,
     pub(crate) call_stack: Vec<usize>,
     pub(crate) frame: usize,
     pub(crate) registers: [TS::Value; 3],
     pub(crate) entry_point: usize,
+    pub(crate) initial_stack_size: usize,
 }
 
-impl<'a, TS: TypeSystem> ExecutionContext<'a, TS> {
+impl<'a, 'b, TS: TypeSystem> ExecutionContext<TS> {
     pub fn new(
-        instructions: &'a [Instruction<TS>],
+        instructions: Vec<Instruction<TS>>,
         stack_size: usize,
         entry_point: usize,
-    ) -> ExecutionContext<'a, TS> {
+    ) -> ExecutionContext<TS> {
         ExecutionContext {
             stack: Vec::with_capacity(stack_size),
             instruction: 0,
-            instructions,
+            instructions: Rc::new(instructions),
             frames: vec![],
             call_stack: vec![],
             frame: 0,
             registers: std::array::from_fn(|_| Value::uninitialized_reference()),
             entry_point,
+            initial_stack_size: stack_size,
         }
     }
 
@@ -111,11 +109,11 @@ impl<'a, TS: TypeSystem> ExecutionContext<'a, TS> {
 }
 
 /// execution functionality
-impl<'a, TS: TypeSystem> ExecutionContext<'a, TS> {
+impl<TS: TypeSystem> ExecutionContext<TS> {
     pub(crate) fn execute_next(&mut self) -> Result<bool, FreightError> {
         #[cfg(feature = "debug_mode")]
         self.print_state();
-        self.instructions[self.instruction].execute(self);
+        self.instructions.clone()[self.instruction].execute(self);
         Ok(self.instruction >= self.instructions.len())
     }
 
@@ -135,5 +133,12 @@ impl<'a, TS: TypeSystem> ExecutionContext<'a, TS> {
         }
         self.instruction -= 1;
         Ok(std::mem::take(self.get_register_mut(RegisterId::Return)))
+    }
+
+    pub fn run(&mut self) -> Result<&TS::Value, FreightError> {
+        self.instruction = self.entry_point;
+        self.stack = vec![Value::uninitialized_reference(); self.initial_stack_size];
+        while self.execute_next()? {}
+        Ok(self.get_register(RegisterId::Return))
     }
 }

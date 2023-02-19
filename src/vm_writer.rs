@@ -4,7 +4,7 @@ use crate::{
     execution_context::ExecutionContext,
     function::{FunctionRef, FunctionWriter},
     instruction::Instruction,
-    TypeSystem, error::FreightError, vm::VM,
+    TypeSystem, error::FreightError,
 };
 
 #[derive(Debug)]
@@ -62,8 +62,8 @@ impl<TS: TypeSystem> VMWriter<TS> {
         self.include_function(func)
     }
 
-    pub fn finish<'a>(self, entry_point: FunctionRef<TS>) -> VM<'a, TS> {
-        VM::new(
+    pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionContext<TS> {
+        ExecutionContext::new(
             self.instructions,
             entry_point.stack_size,
             entry_point.location,

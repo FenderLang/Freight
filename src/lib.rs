@@ -10,7 +10,6 @@ pub mod instruction;
 pub mod operators;
 pub mod value;
 pub mod vm_writer;
-pub mod vm;
 
 pub trait TypeSystem: Clone + 'static {
     type Value: Value<TS = Self>;
