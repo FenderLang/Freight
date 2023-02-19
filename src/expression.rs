@@ -11,7 +11,7 @@ pub enum Expression<TS: TypeSystem> {
     RawValue(TS::Value),
     Variable(usize),
     Global(usize),
-    BinaryOpEval(TS::BinaryOp, Box<Expression<TS>>, Box<Expression<TS>>),
+    BinaryOpEval(TS::BinaryOp, Box<[Expression<TS>; 2]>),
     UnaryOpEval(TS::UnaryOp, Box<Expression<TS>>),
     StaticFunctionCall(FunctionRef<TS>, Vec<Expression<TS>>),
     DynamicFunctionCall(Box<Expression<TS>>, Vec<Expression<TS>>),
@@ -40,10 +40,11 @@ fn build_evaluate<TS: TypeSystem>(
             from: Location::Stack(v),
             to: dest,
         }),
-        Expression::BinaryOpEval(op, l, r) => {
-            build_evaluate(*l, instructions, RETURN_REGISTER)?;
+        Expression::BinaryOpEval(op, operands) => {
+            let [l, r] = *operands;
+            build_evaluate(l, instructions, RETURN_REGISTER)?;
             instructions.push(Instruction::Push(RETURN_REGISTER));
-            build_evaluate(*r, instructions, RIGHT_OPERAND_REGISTER)?;
+            build_evaluate(r, instructions, RIGHT_OPERAND_REGISTER)?;
             instructions.push(Instruction::Pop(RETURN_REGISTER));
             instructions.push(Instruction::BinaryOperation {
                 operator: op,

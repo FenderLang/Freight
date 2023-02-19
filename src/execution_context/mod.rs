@@ -102,7 +102,8 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
             Expression::RawValue(v) => v.clone(),
             Expression::Variable(addr) => self.get_stack(*addr).clone(),
             Expression::Global(addr) => self.stack[*addr].clone(),
-            Expression::BinaryOpEval(op, l, r) => {
+            Expression::BinaryOpEval(op, operands) => {
+                let [l, r] = &**operands;
                 let l = self.evaluate_expression(l)?;
                 let r = self.evaluate_expression(r)?;
                 op.apply_2(&l, &r)
