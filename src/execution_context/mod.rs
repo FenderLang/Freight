@@ -19,7 +19,7 @@ pub struct ExecutionContext<TS: TypeSystem> {
     pub(crate) initial_stack_size: usize,
 }
 
-impl<'a, 'b, TS: TypeSystem> ExecutionContext<TS> {
+impl<TS: TypeSystem> ExecutionContext<TS> {
     pub fn new(
         instructions: Vec<Instruction<TS>>,
         stack_size: usize,
