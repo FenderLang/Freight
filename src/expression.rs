@@ -34,6 +34,7 @@ impl<TS: TypeSystem> Debug for NativeFunction<TS> {
 pub enum Expression<TS: TypeSystem> {
     RawValue(TS::Value),
     Variable(usize),
+    CapturedValue(usize),
     Global(usize),
     BinaryOpEval(TS::BinaryOp, Box<[Expression<TS>; 2]>),
     UnaryOpEval(TS::UnaryOp, Box<Expression<TS>>),

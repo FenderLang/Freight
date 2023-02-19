@@ -13,6 +13,7 @@ use crate::{
 pub struct Function<TS: TypeSystem> {
     pub(crate) expressions: Vec<Expression<TS>>,
     pub(crate) stack_size: usize,
+    pub(crate) arg_count: usize,
 }
 
 pub struct ExecutionEngine<TS: TypeSystem> {
@@ -26,7 +27,8 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
     pub fn run(&mut self) -> Result<TS::Value, FreightError> {
         self.functions.clone()[self.entry_point].call(
             self,
-            vec![Value::uninitialized_reference(); self.stack_size],
+            &mut *vec![Value::uninitialized_reference(); self.stack_size],
+            &[],
         )
     }
 
@@ -35,10 +37,14 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
-        if let FunctionType::CapturingRef(captured) = &func.function_type {
-            args.splice(0..0, captured.iter().map(|v| v.dupe_ref()));
+        while args.len() < func.stack_size {
+            args.push(Default::default());
         }
-        self.functions.clone()[func.location].call(self, args)
+        if let FunctionType::CapturingRef(captures) = &func.function_type {
+            self.functions.clone()[func.location].call(self, &mut args, &*captures)
+        } else {
+            self.functions.clone()[func.location].call(self, &mut args, &[])
+        }
     }
 }
 
@@ -46,25 +52,23 @@ impl<TS: TypeSystem> Function<TS> {
     fn call(
         &self,
         engine: &mut ExecutionEngine<TS>,
-        mut args: Vec<TS::Value>,
+        args: &mut [TS::Value],
+        captured: &[TS::Value],
     ) -> Result<TS::Value, FreightError> {
         if args.len() != self.stack_size {
             return Err(FreightError::IncorrectArgumentCount {
-                expected: self.stack_size,
+                expected: self.arg_count,
                 actual: args.len(),
             });
-        }
-        while args.len() < self.stack_size {
-            args.push(Value::uninitialized_reference());
         }
         if self.expressions.len() == 0 {
             return Ok(Default::default());
         }
         let stack = &mut *args;
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
-            evaluate(expr, engine, stack)?;
+            evaluate(expr, engine, stack, captured)?;
         }
-        evaluate(self.expressions.last().unwrap(), engine, stack)
+        evaluate(self.expressions.last().unwrap(), engine, stack, captured)
     }
 }
 
@@ -72,37 +76,39 @@ fn evaluate<TS: TypeSystem>(
     expr: &Expression<TS>,
     engine: &mut ExecutionEngine<TS>,
     stack: &mut [TS::Value],
+    captured: &[TS::Value],
 ) -> Result<TS::Value, FreightError> {
     let result = match expr {
         Expression::RawValue(v) => v.clone(),
         Expression::Variable(addr) => stack[*addr].clone(),
+        Expression::CapturedValue(addr) => captured[*addr].clone(),
         Expression::Global(addr) => engine.globals[*addr].clone(),
         Expression::BinaryOpEval(op, operands) => {
             let [l, r] = &**operands;
-            let l = evaluate(l, engine, stack)?;
-            let r = evaluate(r, engine, stack)?;
+            let l = evaluate(l, engine, stack, captured)?;
+            let r = evaluate(r, engine, stack, captured)?;
             op.apply_2(&l, &r)
         }
         Expression::UnaryOpEval(op, v) => {
-            let v = evaluate(v, engine, stack)?;
+            let v = evaluate(v, engine, stack, captured)?;
             op.apply_1(&v)
         }
         Expression::StaticFunctionCall(func, args) => {
-            let collected = args
-                .iter()
-                .map(|a| evaluate(a, engine, stack))
-                .collect::<Result<Vec<_>, _>>()?;
+            let mut collected = vec![];
+            for arg in args {
+                collected.push(evaluate(arg, engine, stack, captured)?);
+            }
             engine.call(func, collected)?
         }
         Expression::DynamicFunctionCall(func, args) => {
-            let func: TS::Value = evaluate(func, engine, stack)?;
+            let func: TS::Value = evaluate(func, engine, stack, captured)?;
             let Some(func): Option<&FunctionRef<TS>> = (&func).cast_to_function() else {
                 return Err(FreightError::InvalidInvocationTarget);
             };
-            let collected = args
-                .iter()
-                .map(|a| evaluate(a, engine, stack))
-                .collect::<Result<Vec<_>, _>>()?;
+            let mut collected = vec![];
+            for arg in args {
+                collected.push(evaluate(arg, engine, stack, captured)?);
+            }
             engine.call(func, collected)?
         }
         Expression::FunctionCapture(func) => {
@@ -114,25 +120,24 @@ fn evaluate<TS: TypeSystem>(
                 capture
                     .iter()
                     .map(|i| (&stack[*i]).dupe_ref())
-                    .collect::<Vec<_>>()
-                    .into(),
+                    .collect::<Rc<[_]>>()
             );
             func.into()
         }
         Expression::AssignStack(addr, expr) => {
-            let val = evaluate(expr, engine, stack)?;
+            let val = evaluate(expr, engine, stack, captured)?;
             stack[*addr].assign(val);
             Default::default()
         }
         Expression::NativeFunctionCall(func, args) => {
-            let collected = args
-                .iter()
-                .map(|a| evaluate(a, engine, stack))
-                .collect::<Result<Vec<_>, _>>()?;
+            let mut collected = vec![];
+            for arg in args {
+                collected.push(evaluate(arg, engine, stack, captured)?);
+            }
             func(engine, collected)?
         }
         Expression::AssignGlobal(addr, expr) => {
-            let val = evaluate(expr, engine, stack)?;
+            let val = evaluate(expr, engine, stack, captured)?;
             engine.globals[*addr].assign(val);
             Default::default()
         }

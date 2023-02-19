@@ -1,5 +1,4 @@
-use crate::execution_engine::ExecutionEngine;
-use crate::{error::FreightError, execution_engine::Function, expression::Expression, TypeSystem};
+use crate::{execution_engine::Function, expression::Expression, TypeSystem};
 
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -46,7 +45,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn new_capturing(args: usize, capture: Vec<usize>) -> FunctionWriter<TS> {
         Self {
             args,
-            stack_size: args + capture.len(),
+            stack_size: args,
             expressions: vec![],
             function_type: FunctionType::CapturingDef(capture),
         }
@@ -87,6 +86,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
         Function {
             expressions: self.expressions,
             stack_size: self.stack_size,
+            arg_count: self.args,
         }
     }
 }
