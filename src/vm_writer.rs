@@ -4,7 +4,7 @@ use crate::{
     execution_context::ExecutionContext,
     function::{FunctionRef, FunctionWriter},
     instruction::Instruction,
-    TypeSystem,
+    TypeSystem, error::FreightError, vm::VM,
 };
 
 #[derive(Debug)]
@@ -49,7 +49,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
 
     pub fn include_native_function<const N: usize>(
         &mut self,
-        f: fn(&mut ExecutionContext<TS>, [TS::Value; N]) -> TS::Value,
+        f: fn(&mut ExecutionContext<TS>, [TS::Value; N]) -> Result<TS::Value, FreightError>,
     ) -> FunctionRef<TS> {
         let mut func = FunctionWriter::new(N);
         func.write_instructions([
@@ -62,8 +62,8 @@ impl<TS: TypeSystem> VMWriter<TS> {
         self.include_function(func)
     }
 
-    pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionContext<TS> {
-        ExecutionContext::new(
+    pub fn finish<'a>(self, entry_point: FunctionRef<TS>) -> VM<'a, TS> {
+        VM::new(
             self.instructions,
             entry_point.stack_size,
             entry_point.location,

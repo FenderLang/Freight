@@ -50,7 +50,7 @@ fn expand_function_args<TS: TypeSystem>(
                 expand_static_function_call_instructions(instructions, &function, args)?;
                 instructions.push(Instruction::Push(RETURN_REGISTER));
             }
-            Operand::ValueRef(addr) => instructions.push(Instruction::Push(Location::Addr(addr))),
+            Operand::ValueRef(addr) => instructions.push(Instruction::Push(Location::Stack(addr))),
             Operand::ValueRaw(val) => instructions.push(Instruction::PushRaw(val)),
             Operand::Expression(builder) => instructions.extend(builder.build_instructions()?),
             Operand::DynamicFunctionCall { function, args } => {
@@ -108,7 +108,7 @@ fn expand_first_operand_instructions<TS: TypeSystem>(
             })
         }
         Operand::ValueRef(addr) => instructions.push(Instruction::Move {
-            from: Location::Addr(addr),
+            from: Location::Stack(addr),
             to: HELD_VALUE,
         }),
         Operand::ValueRaw(val) => instructions.push(Instruction::SetRaw {
@@ -149,7 +149,7 @@ fn expand_second_operand_instructions<TS: TypeSystem>(
             })
         }
         Operand::ValueRef(addr) => instructions.push(Instruction::Move {
-            from: Location::Addr(addr),
+            from: Location::Stack(addr),
             to: RIGHT_OPERAND_REGISTER,
         }),
         Operand::ValueRaw(val) => instructions.push(Instruction::SetRaw {

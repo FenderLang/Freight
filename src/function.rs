@@ -44,6 +44,9 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
         }
     }
 
+    /// Create a capturing function (closure)
+    /// args: How many arguments the function will take
+    /// capture: What items in the current stack frame to capture when creating an instance
     pub fn new_capturing(args: usize, capture: Vec<usize>) -> FunctionWriter<TS> {
         Self {
             args,
@@ -67,7 +70,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
         self.evaluate_expression(expr)?;
         self.instructions.push(Instruction::Assign {
             from: RETURN_REGISTER,
-            to: Location::Addr(var),
+            to: Location::Stack(var),
         });
         Ok(())
     }
@@ -79,6 +82,11 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
 
     pub fn argument_stack_offset(&self, arg: usize) -> usize {
         arg + 1
+            + if let FunctionType::CapturingDef(capture) = &self.function_type {
+                capture.len()
+            } else {
+                0
+            }
     }
 
     pub fn return_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {
@@ -121,17 +129,21 @@ impl<TS: TypeSystem> FunctionRef<TS> {
 }
 
 pub trait InvokeNative<TS: TypeSystem> {
-    fn invoke(&self, ctx: &mut ExecutionContext<TS>, args: Vec<TS::Value>) -> TS::Value;
+    fn invoke(
+        &self,
+        ctx: &mut ExecutionContext<TS>,
+        args: Vec<TS::Value>,
+    ) -> Result<TS::Value, FreightError>;
 }
 
 impl<const N: usize, TS: TypeSystem> InvokeNative<TS>
-    for fn(&mut ExecutionContext<TS>, [TS::Value; N]) -> TS::Value
+    for fn(&mut ExecutionContext<TS>, [TS::Value; N]) -> Result<TS::Value, FreightError>
 {
     fn invoke(
         &self,
         ctx: &mut ExecutionContext<TS>,
         args: Vec<<TS as TypeSystem>::Value>,
-    ) -> <TS as TypeSystem>::Value {
+    ) -> Result<<TS as TypeSystem>::Value, FreightError> {
         self(ctx, args.try_into().expect("Incorrect argument count"))
     }
 }
