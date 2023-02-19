@@ -4,7 +4,7 @@ use crate::{
     function::{FunctionType, InvokeNative},
     operators::{binary::BinaryOperator, unary::UnaryOperator},
     value::Value,
-    TypeSystem,
+    TypeSystem, expression::Expression,
 };
 use std::{fmt::Debug, rc::Rc};
 
@@ -106,6 +106,10 @@ pub enum Instruction<TS: TypeSystem> {
         stack_size: usize,
     },
     CaptureValues,
+    EvaluateExpression {
+        expr: Expression<TS>,
+        dest: Location,
+    },
 }
 
 impl<TS: TypeSystem> Instruction<TS> {
@@ -113,6 +117,9 @@ impl<TS: TypeSystem> Instruction<TS> {
         use Instruction::*;
         let mut increment_index = true;
         match self {
+            EvaluateExpression { expr, dest } => {
+                *ctx.get_mut(dest) = ctx.evaluate_expression(expr)?;
+            },
             Create {
                 location,
                 creation_callback,
@@ -225,6 +232,7 @@ impl<TS: TypeSystem> Instruction<TS> {
 impl<TS: TypeSystem> Debug for Instruction<TS> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::EvaluateExpression { expr, dest } => f.debug_struct("EvaluateExpression").field("expr", expr).field("dest", dest).finish(),
             Self::Create {
                 location,
                 creation_callback: _,

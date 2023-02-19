@@ -1,5 +1,11 @@
 use crate::{
-    error::FreightError, function::FunctionRef, instruction::Instruction, value::Value, TypeSystem,
+    error::FreightError,
+    expression::Expression,
+    function::{FunctionRef, FunctionType},
+    instruction::Instruction,
+    operators::{binary::BinaryOperator, unary::UnaryOperator},
+    value::Value,
+    TypeSystem,
 };
 use std::{fmt::Debug, rc::Rc};
 
@@ -86,6 +92,59 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
         self.frame = self.frames.pop().unwrap();
         self.instruction = self.call_stack.pop().unwrap();
         self.stack.drain((self.stack.len() - stack_size)..);
+    }
+
+    pub fn evaluate_expression(
+        &mut self,
+        expr: &Expression<TS>,
+    ) -> Result<TS::Value, FreightError> {
+        let result = match expr {
+            Expression::RawValue(v) => v.clone(),
+            Expression::Variable(addr) => self.get_stack(*addr).clone(),
+            Expression::Global(addr) => self.stack[*addr].clone(),
+            Expression::BinaryOpEval(op, l, r) => {
+                let l = self.evaluate_expression(l)?;
+                let r = self.evaluate_expression(r)?;
+                op.apply_2(&l, &r)
+            }
+            Expression::UnaryOpEval(op, v) => {
+                let v = self.evaluate_expression(v)?;
+                op.apply_1(&v)
+            }
+            Expression::StaticFunctionCall(func, args) => {
+                let mut collected = Vec::with_capacity(func.arg_count);
+                for arg in args {
+                    collected.push(self.evaluate_expression(arg)?);
+                }
+                self.call_function(func.clone(), collected)?
+            }
+            Expression::DynamicFunctionCall(func, args) => {
+                let func = self.evaluate_expression(func)?;
+                let Some(func) = func.cast_to_function() else {
+                    return Err(FreightError::InvalidInvocationTarget);
+                };
+                let mut collected = Vec::with_capacity(func.arg_count);
+                for arg in args {
+                    collected.push(self.evaluate_expression(arg)?);
+                }
+                self.call_function(func.clone(), collected)?
+            }
+            Expression::FunctionCapture(func) => {
+                let FunctionType::CapturingDef(capture) = &func.function_type else {
+                    return Err(FreightError::InvalidInvocationTarget);
+                };
+                let mut func = func.clone();
+                func.function_type = FunctionType::CapturingRef(
+                    capture
+                        .iter()
+                        .map(|i| self.get_stack(*i).dupe_ref())
+                        .collect::<Vec<_>>()
+                        .into(),
+                );
+                func.into()
+            }
+        };
+        Ok(result)
     }
 
     pub(crate) fn do_invoke(&mut self, arg_count: usize, stack_size: usize, instruction: usize) {

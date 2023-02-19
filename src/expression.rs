@@ -6,6 +6,7 @@ use crate::{
     TypeSystem,
 };
 
+#[derive(Debug)]
 pub enum Expression<TS: TypeSystem> {
     RawValue(TS::Value),
     Variable(usize),
