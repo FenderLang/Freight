@@ -78,7 +78,7 @@ impl<'a, 'b, TS: TypeSystem> ExecutionContext<TS> {
 
     pub(crate) fn do_return(&mut self, stack_size: usize) {
         if self.frames.is_empty() {
-            self.instruction = usize::max_value();
+            self.instruction = self.instructions.len();
             return;
         }
         self.frame = self.frames.pop().unwrap();
@@ -113,8 +113,10 @@ impl<TS: TypeSystem> ExecutionContext<TS> {
     pub(crate) fn execute_next(&mut self) -> Result<bool, FreightError> {
         #[cfg(feature = "debug_mode")]
         self.print_state();
-        self.instructions.clone()[self.instruction].execute(self);
-        Ok(self.instruction >= self.instructions.len())
+        if self.instructions.clone()[self.instruction].execute(self)? {
+            self.instruction += 1;
+        }
+        Ok(self.instruction < self.instructions.len())
     }
 
     pub fn call_function(

@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use operators::{binary::BinaryOperator, unary::UnaryOperator};
+use std::fmt::Debug;
 use value::Value;
 
 pub mod error;

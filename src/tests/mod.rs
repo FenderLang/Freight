@@ -1,5 +1,4 @@
 use crate::{
-    execution_context::RegisterId,
     expression::{Expression, Operand},
     function::FunctionWriter,
     vm_writer::VMWriter,

@@ -10,13 +10,11 @@ pub const RIGHT_OPERAND_REGISTER: Location = Location::Register(RegisterId::Righ
 /// `Location` of the `Popped` register
 pub const POPPED_REGISTER: Location = Location::Register(RegisterId::Popped);
 
-
-
 #[derive(Debug, Clone)]
 pub enum Location {
     Register(RegisterId),
     Stack(usize),
-//    Const(usize),
+    //    Const(usize),
 }
 
 #[derive(Debug, Clone, Copy, Hash)]

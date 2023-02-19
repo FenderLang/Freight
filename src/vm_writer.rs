@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
 use crate::{
+    error::FreightError,
     execution_context::ExecutionContext,
     function::{FunctionRef, FunctionWriter},
     instruction::Instruction,
-    TypeSystem, error::FreightError,
+    TypeSystem,
 };
 
 #[derive(Debug)]

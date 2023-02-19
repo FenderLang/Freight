@@ -1,7 +1,10 @@
 use crate::{
+    error::FreightError,
     execution_context::{ExecutionContext, Location, RegisterId, HELD_VALUE_ADDRESS},
-    function::{InvokeNative, FunctionType, FunctionRef},
-    TypeSystem, error::FreightError, operators::{unary::UnaryOperator, binary::BinaryOperator}, value::Value,
+    function::{FunctionRef, FunctionType, InvokeNative},
+    operators::{binary::BinaryOperator, unary::UnaryOperator},
+    value::Value,
+    TypeSystem,
 };
 use std::{fmt::Debug, rc::Rc};
 
@@ -142,24 +145,24 @@ impl<TS: TypeSystem> Instruction<TS> {
             Move { from, to } => {
                 let val = std::mem::take(ctx.get_mut(from));
                 *ctx.get_mut(to) = val;
-            },
+            }
             Swap(location_a, location_b) => {
                 let a = std::mem::take(ctx.get_mut(location_a));
                 *ctx.get_mut(location_a) = std::mem::take(ctx.get_mut(location_b));
                 *ctx.get_mut(location_b) = a;
-//                match (location_a, location_b) {
-//                    (Location::Register(reg1), Location::Register(reg2)) => {
-//                        ctx.registers.swap(reg1.id(), reg2.id())
-//                    }
-//                    (Location::Register(reg), Location::Stack(addr))
-//                    | (Location::Stack(addr), Location::Register(reg)) => std::mem::swap(
-//                            &mut ctx.registers[reg.id()],
-//                        &mut ctx.stack[*addr + ctx.frame],
-//                    ),
-//                    (Location::Stack(addr1), Location::Stack(addr2)) => {
-//                        ctx.stack.swap(*addr1 + ctx.frame, *addr2 + ctx.frame)
-//                    }
-//                }
+                //                match (location_a, location_b) {
+                //                    (Location::Register(reg1), Location::Register(reg2)) => {
+                //                        ctx.registers.swap(reg1.id(), reg2.id())
+                //                    }
+                //                    (Location::Register(reg), Location::Stack(addr))
+                //                    | (Location::Stack(addr), Location::Register(reg)) => std::mem::swap(
+                //                            &mut ctx.registers[reg.id()],
+                //                        &mut ctx.stack[*addr + ctx.frame],
+                //                    ),
+                //                    (Location::Stack(addr1), Location::Stack(addr2)) => {
+                //                        ctx.stack.swap(*addr1 + ctx.frame, *addr2 + ctx.frame)
+                //                    }
+                //                }
             }
 
             PushRaw(value) => ctx.stack.push(value.clone()),
@@ -174,21 +177,21 @@ impl<TS: TypeSystem> Instruction<TS> {
 
             UnaryOperation(unary_op) => {
                 ctx.registers[RegisterId::Return.id()] =
-                unary_op.apply_1(&ctx.registers[RegisterId::Return.id()]);
+                    unary_op.apply_1(&ctx.registers[RegisterId::Return.id()]);
             }
             BinaryOperation(binary_op) => {
                 ctx.registers[RegisterId::Return.id()] = binary_op.apply_2(
-                        &ctx.registers[RegisterId::Return.id()],
+                    &ctx.registers[RegisterId::Return.id()],
                     &ctx.registers[RegisterId::RightOperand.id()],
                 );
             }
             UnaryOperationWithHeld(unary_op) => {
                 ctx.registers[RegisterId::Return.id()] =
-                unary_op.apply_1(ctx.get_stack(HELD_VALUE_ADDRESS))
+                    unary_op.apply_1(ctx.get_stack(HELD_VALUE_ADDRESS))
             }
             BinaryOperationWithHeld(binary_op) => {
                 ctx.registers[RegisterId::Return.id()] = binary_op.apply_2(
-                        ctx.get_stack(HELD_VALUE_ADDRESS),
+                    ctx.get_stack(HELD_VALUE_ADDRESS),
                     &ctx.registers[RegisterId::RightOperand.id()],
                 )
             }
@@ -245,7 +248,7 @@ impl<TS: TypeSystem> Instruction<TS> {
                 };
                 *ctx.get_register_mut(RegisterId::Return) = FunctionRef {
                     function_type: FunctionType::<TS>::CapturingRef(Rc::new(
-                            capture
+                        capture
                             .iter()
                             .map(|i| ctx.get_stack(*i).dupe_ref())
                             .collect(),
