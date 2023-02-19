@@ -58,7 +58,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
                 function: Rc::new(f),
                 arg_count: N,
             },
-            Instruction::Return { stack_size: 1 },
+            Instruction::Return { stack_size: 0 },
         ]);
         self.include_function(func)
     }

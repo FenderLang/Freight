@@ -1,14 +1,7 @@
-/// `Location` referencing temporary held value, in stack, used by the `Expression`.
-pub const HELD_VALUE: Location = Location::Stack(HELD_VALUE_ADDRESS);
-/// Position in stack of the temporary held value used by the `Expression`.
-pub(crate) const HELD_VALUE_ADDRESS: usize = 0;
 /// `Location` of the `Return` register
 pub const RETURN_REGISTER: Location = Location::Register(RegisterId::Return);
 /// `Location` of the `RightOperand` register
 pub const RIGHT_OPERAND_REGISTER: Location = Location::Register(RegisterId::RightOperand);
-#[cfg(feature = "popped_register")]
-/// `Location` of the `Popped` register
-pub const POPPED_REGISTER: Location = Location::Register(RegisterId::Popped);
 
 #[derive(Debug, Clone)]
 pub enum Location {
@@ -21,8 +14,6 @@ pub enum Location {
 pub enum RegisterId {
     Return,
     RightOperand,
-    #[cfg(feature = "popped_register")]
-    Popped,
 }
 
 impl RegisterId {
@@ -30,8 +21,6 @@ impl RegisterId {
         match self {
             RegisterId::Return => 0,
             RegisterId::RightOperand => 1,
-            #[cfg(feature = "popped_register")]
-            RegisterId::Popped => 2,
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     error::FreightError,
-    execution_context::{Location, HELD_VALUE, RETURN_REGISTER},
+    execution_context::{Location, RETURN_REGISTER, RIGHT_OPERAND_REGISTER},
     function::FunctionRef,
     instruction::Instruction,
     value::Value,
@@ -41,15 +41,17 @@ fn build_evaluate<TS: TypeSystem>(
         }),
         Expression::BinaryOpEval(op, l, r) => {
             build_evaluate(*l, instructions)?;
+            instructions.push(Instruction::Push(RETURN_REGISTER));
+            build_evaluate(*r, instructions)?;
             instructions.push(Instruction::Move {
                 from: RETURN_REGISTER,
-                to: HELD_VALUE,
+                to: RIGHT_OPERAND_REGISTER,
             });
-            build_evaluate(*r, instructions)?;
+            instructions.push(Instruction::Pop(RETURN_REGISTER));
             instructions.push(Instruction::BinaryOperation {
                 operator: op,
-                left: HELD_VALUE,
-                right: RETURN_REGISTER,
+                left: RETURN_REGISTER,
+                right: RIGHT_OPERAND_REGISTER,
             });
         }
         Expression::UnaryOpEval(op, x) => {
@@ -100,7 +102,6 @@ fn build_function_call_args<TS: TypeSystem>(
     args: Vec<Expression<TS>>,
     instructions: &mut Vec<Instruction<TS>>,
 ) -> Result<(), FreightError> {
-    instructions.push(Instruction::PushRaw(Value::uninitialized_reference()));
     for arg in args {
         build_evaluate(arg, instructions)?;
         instructions.push(Instruction::Push(RETURN_REGISTER));

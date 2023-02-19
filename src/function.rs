@@ -6,8 +6,8 @@ use crate::{
     TypeSystem,
 };
 
-use std::rc::Rc;
 use std::fmt::Debug;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
@@ -39,7 +39,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn new(args: usize) -> FunctionWriter<TS> {
         Self {
             args,
-            stack_size: args + 1,
+            stack_size: args,
             instructions: vec![],
             function_type: FunctionType::Static,
         }
@@ -51,7 +51,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn new_capturing(args: usize, capture: Vec<usize>) -> FunctionWriter<TS> {
         Self {
             args,
-            stack_size: args + capture.len() + 1,
+            stack_size: args + capture.len(),
             instructions: vec![],
             function_type: FunctionType::CapturingDef(capture),
         }
@@ -82,16 +82,15 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     }
 
     pub fn captured_stack_offset(&self, captured: usize) -> usize {
-        captured + 1
+        captured
     }
 
     pub fn argument_stack_offset(&self, arg: usize) -> usize {
-        arg + 1
-            + if let FunctionType::CapturingDef(capture) = &self.function_type {
-                capture.len()
-            } else {
-                0
-            }
+        arg + if let FunctionType::CapturingDef(capture) = &self.function_type {
+            capture.len()
+        } else {
+            0
+        }
     }
 
     pub fn return_expression(&mut self, expr: Expression<TS>) -> Result<(), FreightError> {

@@ -66,11 +66,8 @@ pub enum Instruction<TS: TypeSystem> {
     /// Pushes a given value onto the end of the stack
     PushRaw(TS::Value),
 
-    /// Pops the last value off of the stack moving it into the `Return` register
-    ///
-    /// To not have the `Return` register altered by the `Pop` instruction enable the `popped_register` feature.
-    /// This will move the popped value into the `Popped` register instead.
-    Pop,
+    /// Pops the last value off of the stack moving it to the specified location
+    Pop(Location),
 
     /// Uses the unary operation given on the value in the specified location
     UnaryOperation {
@@ -139,10 +136,7 @@ impl<TS: TypeSystem> Instruction<TS> {
 
             PushRaw(value) => ctx.stack.push(value.clone()),
             Push(from) => ctx.stack.push(ctx.get(from).clone()),
-            #[cfg(feature = "popped_register")]
-            Pop => *ctx.get_register_mut(RegisterId::Popped) = ctx.stack.pop().unwrap_or_default(),
-            #[cfg(not(feature = "popped_register"))]
-            Pop => *ctx.get_register_mut(RegisterId::Return) = ctx.stack.pop().unwrap_or_default(),
+            Pop(to) => *ctx.get_mut(to) = ctx.stack.pop().unwrap_or_default(),
 
             UnaryOperation { operator, operand } => {
                 *ctx.get_register_mut(RegisterId::Return) = operator.apply_1(ctx.get(operand));
@@ -162,7 +156,7 @@ impl<TS: TypeSystem> Instruction<TS> {
                 stack_size,
                 instruction,
             } => {
-                ctx.do_invoke(*arg_count, 0, *stack_size, *instruction);
+                ctx.do_invoke(*arg_count, *stack_size, *instruction);
                 increment_index = false;
             }
             InvokeDynamic { arg_count } => {
@@ -186,7 +180,7 @@ impl<TS: TypeSystem> Instruction<TS> {
                         ctx.stack.extend(values.iter().map(|v| v.dupe_ref()));
                     }
                 }
-                ctx.do_invoke(func.arg_count, captures, func.stack_size, func.location);
+                ctx.do_invoke(func.arg_count + captures, func.stack_size, func.location);
                 increment_index = false;
             }
             InvokeNative {
@@ -262,7 +256,7 @@ impl<TS: TypeSystem> Debug for Instruction<TS> {
             Self::Swap(arg0, arg1) => f.debug_tuple("Swap").field(arg0).field(arg1).finish(),
             Self::PushRaw(arg0) => f.debug_tuple("PushRaw").field(arg0).finish(),
             Self::Push(arg0) => f.debug_tuple("Push").field(arg0).finish(),
-            Self::Pop => write!(f, "Pop"),
+            Self::Pop(to) => f.debug_tuple("Pop").field(to).finish(),
             Self::UnaryOperation { operator, operand } => f
                 .debug_struct("UnaryOperation")
                 .field("operator", operator)

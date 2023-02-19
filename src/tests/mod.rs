@@ -38,5 +38,5 @@ fn test_functions() {
     let main = writer.include_function(main);
     let mut vm = writer.finish(main);
     assert_eq!(vm.run().unwrap(), &TestValueWrapper(TestValue::Number(5)));
-    assert_eq!(vm.stack_size(), 3);
+    assert_eq!(vm.stack_size(), 2);
 }
