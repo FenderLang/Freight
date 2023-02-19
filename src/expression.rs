@@ -35,7 +35,7 @@ fn build_evaluate<TS: TypeSystem>(
             location: RETURN_REGISTER,
             value: v,
         }),
-        Expression::Variable(v) => instructions.push(Instruction::Assign {
+        Expression::Variable(v) => instructions.push(Instruction::Copy {
             from: Location::Stack(v),
             to: RETURN_REGISTER,
         }),
