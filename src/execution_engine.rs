@@ -94,7 +94,7 @@ fn evaluate<TS: TypeSystem>(
             op.apply_1(&v)
         }
         Expression::StaticFunctionCall(func, args) => {
-            let mut collected = vec![];
+            let mut collected = Vec::with_capacity(func.stack_size);
             for arg in args {
                 collected.push(evaluate(arg, engine, stack, captured)?);
             }
@@ -105,7 +105,7 @@ fn evaluate<TS: TypeSystem>(
             let Some(func): Option<&FunctionRef<TS>> = (&func).cast_to_function() else {
                 return Err(FreightError::InvalidInvocationTarget);
             };
-            let mut collected = vec![];
+            let mut collected = Vec::with_capacity(func.stack_size);
             for arg in args {
                 collected.push(evaluate(arg, engine, stack, captured)?);
             }
@@ -130,7 +130,7 @@ fn evaluate<TS: TypeSystem>(
             Default::default()
         }
         Expression::NativeFunctionCall(func, args) => {
-            let mut collected = vec![];
+            let mut collected = Vec::with_capacity(args.len());
             for arg in args {
                 collected.push(evaluate(arg, engine, stack, captured)?);
             }
