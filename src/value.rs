@@ -1,7 +1,7 @@
 use crate::{function::FunctionRef, TypeSystem};
 use std::fmt::Debug;
 
-pub trait Value: Clone + Default + Debug + From<FunctionRef<Self::TS>> + Eq {
+pub trait Value: Clone + Default + Debug + From<FunctionRef<Self::TS>> + PartialEq {
     type TS: TypeSystem<Value = Self>;
     fn uninitialized_reference() -> Self;
     fn get_type(&self) -> &<Self::TS as TypeSystem>::TypeId;

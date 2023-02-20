@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{
     function::FunctionRef,
     operators::{binary::BinaryOperator, unary::UnaryOperator},
@@ -35,10 +37,10 @@ pub enum TestTypeId {
     Null,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct TestValueWrapper(pub TestValue);
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum TestValue {
     Number(i64),
     Function(FunctionRef<TestTypeSystem>),
@@ -104,9 +106,5 @@ impl BinaryOperator<TestValueWrapper> for TestBinaryOperator {
             }
             _ => panic!("Attempt to add non-integer type"),
         }
-    }
-
-    fn priority(&self) -> usize {
-        0
     }
 }
