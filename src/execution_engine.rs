@@ -144,7 +144,3 @@ fn evaluate<TS: TypeSystem>(
     };
     Ok(result)
 }
-
-trait Thing {
-    const N: usize;
-}
