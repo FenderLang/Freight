@@ -141,6 +141,13 @@ fn evaluate<TS: TypeSystem>(
             engine.globals[*addr].assign(val);
             Default::default()
         }
+        Expression::AssignDynamic(args) => {
+            let [target, value] = &**args;
+            let mut target = evaluate(target, engine, stack, captured)?.dupe_ref();
+            let value = evaluate(value, engine, stack, captured)?;
+            target.assign(value);
+            Default::default()
+        }
     };
     Ok(result)
 }

@@ -44,4 +44,5 @@ pub enum Expression<TS: TypeSystem> {
     FunctionCapture(FunctionRef<TS>),
     AssignStack(usize, Box<Expression<TS>>),
     AssignGlobal(usize, Box<Expression<TS>>),
+    AssignDynamic(Box<[Expression<TS>; 2]>),
 }
