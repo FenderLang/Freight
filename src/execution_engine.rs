@@ -38,7 +38,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
         while args.len() < func.stack_size {
-            args.push(Default::default());
+            args.push(Value::uninitialized_reference());
         }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
             self.functions.clone()[func.location].call(self, &mut args, &*captures)
