@@ -9,7 +9,7 @@ pub struct FunctionWriter<TS: TypeSystem> {
     pub(crate) stack_size: usize,
     pub(crate) args: usize,
     pub(crate) expressions: Vec<Expression<TS>>,
-    pub function_type: FunctionType<TS>,
+    pub(crate) function_type: FunctionType<TS>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
