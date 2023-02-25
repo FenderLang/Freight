@@ -52,6 +52,10 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
         }
     }
 
+    pub fn set_captures(&mut self, capture: Vec<VariableType>) {
+        self.function_type = FunctionType::CapturingDef(capture)
+    }
+
     pub fn create_variable(&mut self) -> usize {
         let var = self.stack_size;
         self.stack_size += 1;
@@ -65,18 +69,6 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
 
     pub fn evaluate_expression(&mut self, expr: Expression<TS>) {
         self.expressions.push(expr);
-    }
-
-    pub fn captured_stack_offset(&self, captured: usize) -> usize {
-        captured
-    }
-
-    pub fn argument_stack_offset(&self, arg: usize) -> usize {
-        arg + if let FunctionType::CapturingDef(capture) = &self.function_type {
-            capture.len()
-        } else {
-            0
-        }
     }
 
     pub fn return_expression(&mut self, expr: Expression<TS>) {
