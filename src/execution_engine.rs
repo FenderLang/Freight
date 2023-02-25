@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     error::FreightError,
-    expression::Expression,
+    expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType},
     operators::{binary::BinaryOperator, unary::UnaryOperator},
     value::Value,
@@ -38,7 +38,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
         while args.len() < func.stack_size {
-            args.push(Default::default());
+            args.push(Value::uninitialized_reference());
         }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
             self.functions.clone()[func.location].call(self, &mut args, &*captures)
@@ -80,8 +80,10 @@ fn evaluate<TS: TypeSystem>(
 ) -> Result<TS::Value, FreightError> {
     let result = match expr {
         Expression::RawValue(v) => v.clone(),
-        Expression::Variable(addr) => stack[*addr].clone(),
-        Expression::CapturedValue(addr) => captured[*addr].clone(),
+        Expression::Variable(var) => match var {
+            VariableType::Captured(addr) => captured[*addr].clone(),
+            VariableType::Stack(addr) => stack[*addr].clone(),
+        },
         Expression::Global(addr) => engine.globals[*addr].clone(),
         Expression::BinaryOpEval(op, operands) => {
             let [l, r] = &**operands;
@@ -119,7 +121,10 @@ fn evaluate<TS: TypeSystem>(
             func.function_type = FunctionType::CapturingRef(
                 capture
                     .iter()
-                    .map(|i| (&stack[*i]).dupe_ref())
+                    .map(|var| match var {
+                        VariableType::Captured(addr) => captured[*addr].dupe_ref(),
+                        VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+                    })
                     .collect::<Rc<[_]>>()
             );
             func.into()
@@ -139,6 +144,13 @@ fn evaluate<TS: TypeSystem>(
         Expression::AssignGlobal(addr, expr) => {
             let val = evaluate(expr, engine, stack, captured)?;
             engine.globals[*addr].assign(val);
+            Default::default()
+        }
+        Expression::AssignDynamic(args) => {
+            let [target, value] = &**args;
+            let mut target = evaluate(target, engine, stack, captured)?.dupe_ref();
+            let value = evaluate(value, engine, stack, captured)?;
+            target.assign(value);
             Default::default()
         }
     };

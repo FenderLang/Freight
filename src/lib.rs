@@ -1,5 +1,3 @@
-use error::FreightError;
-use execution_engine::ExecutionEngine;
 use operators::{binary::BinaryOperator, unary::UnaryOperator};
 use std::fmt::Debug;
 use value::Value;

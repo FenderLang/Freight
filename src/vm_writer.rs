@@ -1,5 +1,4 @@
 use crate::{
-    error::FreightError,
     execution_engine::{ExecutionEngine, Function},
     expression::{Expression, NativeFunction},
     function::{FunctionRef, FunctionWriter},
@@ -50,11 +49,10 @@ impl<TS: TypeSystem> VMWriter<TS> {
         f: NativeFunction<TS>,
     ) -> FunctionRef<TS> {
         let mut func = FunctionWriter::new(N);
-        let args = (0..N).map(|n| Expression::Variable(n)).collect();
-        func.evaluate_expression(Expression::NativeFunctionCall(
-            f,
-            args,
-        ));
+        let args = (0..N)
+            .map(|n| Expression::stack(n))
+            .collect();
+        func.evaluate_expression(Expression::NativeFunctionCall(f, args));
         self.include_function(func)
     }
 

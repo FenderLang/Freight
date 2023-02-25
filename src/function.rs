@@ -1,3 +1,4 @@
+use crate::expression::VariableType;
 use crate::{execution_engine::Function, expression::Expression, TypeSystem};
 
 use std::fmt::Debug;
@@ -16,7 +17,7 @@ pub enum FunctionType<TS: TypeSystem> {
     /// Static reference to a function, which can't capture any values.
     Static,
     /// Reference to a function which captures values, but hasn't been initialized with those values.
-    CapturingDef(Vec<usize>),
+    CapturingDef(Vec<VariableType>),
     /// A reference to a function which captures values bundled with those captured values
     CapturingRef(Rc<[TS::Value]>),
 }
@@ -42,7 +43,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     /// Create a capturing function (closure)
     /// args: How many arguments the function will take
     /// capture: What items in the current stack frame to capture when creating an instance
-    pub fn new_capturing(args: usize, capture: Vec<usize>) -> FunctionWriter<TS> {
+    pub fn new_capturing(args: usize, capture: Vec<VariableType>) -> FunctionWriter<TS> {
         Self {
             args,
             stack_size: args,

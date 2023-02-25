@@ -30,11 +30,16 @@ impl<TS: TypeSystem> Debug for NativeFunction<TS> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum VariableType {
+    Captured(usize),
+    Stack(usize),
+}
+
 #[derive(Debug)]
 pub enum Expression<TS: TypeSystem> {
     RawValue(TS::Value),
-    Variable(usize),
-    CapturedValue(usize),
+    Variable(VariableType),
     Global(usize),
     BinaryOpEval(TS::BinaryOp, Box<[Expression<TS>; 2]>),
     UnaryOpEval(TS::UnaryOp, Box<Expression<TS>>),
@@ -44,4 +49,15 @@ pub enum Expression<TS: TypeSystem> {
     FunctionCapture(FunctionRef<TS>),
     AssignStack(usize, Box<Expression<TS>>),
     AssignGlobal(usize, Box<Expression<TS>>),
+    AssignDynamic(Box<[Expression<TS>; 2]>),
+}
+
+impl<TS: TypeSystem> Expression<TS> {
+    pub fn stack(addr: usize) -> Expression<TS> {
+        Expression::Variable(VariableType::Stack(addr))
+    }
+
+    pub fn captured(addr: usize) -> Expression<TS> {
+        Expression::Variable(VariableType::Captured(addr))
+    }
 }
