@@ -38,7 +38,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
         while args.len() < func.stack_size {
-            args.push(Default::default());
+            args.push(Value::uninitialized_reference());
         }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
             self.functions.clone()[func.location].call(self, &mut args, &*captures)
@@ -144,6 +144,13 @@ fn evaluate<TS: TypeSystem>(
         Expression::AssignGlobal(addr, expr) => {
             let val = evaluate(expr, engine, stack, captured)?;
             engine.globals[*addr].assign(val);
+            Default::default()
+        }
+        Expression::AssignDynamic(args) => {
+            let [target, value] = &**args;
+            let mut target = evaluate(target, engine, stack, captured)?.dupe_ref();
+            let value = evaluate(value, engine, stack, captured)?;
+            target.assign(value);
             Default::default()
         }
     };
