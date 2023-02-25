@@ -12,7 +12,7 @@ fn test_functions() {
     let b = add.argument_stack_offset(1);
     add.return_expression(Expression::BinaryOpEval(
         TestBinaryOperator::Add,
-        [Expression::Variable(a), Expression::Variable(b)].into(),
+        [Expression::stack(a), Expression::stack(b)].into(),
     ));
     let add = writer.include_function(add);
     let mut main = FunctionWriter::new(0);
@@ -28,7 +28,7 @@ fn test_functions() {
     );
     main.return_expression(Expression::StaticFunctionCall(
         add,
-        vec![Expression::Variable(x), Expression::Variable(y)],
+        vec![Expression::stack(x), Expression::stack(y)],
     ));
     let main = writer.include_function(main);
     let mut vm = writer.finish(main);

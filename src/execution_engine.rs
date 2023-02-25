@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     error::FreightError,
-    expression::Expression,
+    expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType},
     operators::{binary::BinaryOperator, unary::UnaryOperator},
     value::Value,
@@ -80,8 +80,10 @@ fn evaluate<TS: TypeSystem>(
 ) -> Result<TS::Value, FreightError> {
     let result = match expr {
         Expression::RawValue(v) => v.clone(),
-        Expression::Variable(addr) => stack[*addr].clone(),
-        Expression::CapturedValue(addr) => captured[*addr].clone(),
+        Expression::Variable(var) => match var {
+            VariableType::Captured(addr) => captured[*addr].clone(),
+            VariableType::Stack(addr) => stack[*addr].clone(),
+        },
         Expression::Global(addr) => engine.globals[*addr].clone(),
         Expression::BinaryOpEval(op, operands) => {
             let [l, r] = &**operands;
@@ -119,7 +121,10 @@ fn evaluate<TS: TypeSystem>(
             func.function_type = FunctionType::CapturingRef(
                 capture
                     .iter()
-                    .map(|i| (&stack[*i]).dupe_ref())
+                    .map(|var| match var {
+                        VariableType::Captured(addr) => captured[*addr].dupe_ref(),
+                        VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+                    })
                     .collect::<Rc<[_]>>()
             );
             func.into()
