@@ -16,6 +16,7 @@ pub struct Function<TS: TypeSystem> {
     pub(crate) arg_count: usize,
 }
 
+#[derive(Debug)]
 pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) globals: Vec<TS::Value>,
     pub(crate) functions: Rc<[Function<TS>]>,
@@ -83,6 +84,7 @@ fn evaluate<TS: TypeSystem>(
         Expression::Variable(var) => match var {
             VariableType::Captured(addr) => captured[*addr].clone(),
             VariableType::Stack(addr) => stack[*addr].clone(),
+            VariableType::Global(addr) => engine.globals[*addr].clone(),
         },
         Expression::Global(addr) => engine.globals[*addr].clone(),
         Expression::BinaryOpEval(op, operands) => {
@@ -124,6 +126,7 @@ fn evaluate<TS: TypeSystem>(
                     .map(|var| match var {
                         VariableType::Captured(addr) => captured[*addr].dupe_ref(),
                         VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+                        VariableType::Global(addr) => engine.globals[*addr].dupe_ref(),
                     })
                     .collect::<Rc<[_]>>()
             );

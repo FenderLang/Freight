@@ -34,6 +34,7 @@ impl<TS: TypeSystem> Debug for NativeFunction<TS> {
 pub enum VariableType {
     Captured(usize),
     Stack(usize),
+    Global(usize),
 }
 
 #[derive(Debug)]
