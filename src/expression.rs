@@ -34,13 +34,13 @@ impl<TS: TypeSystem> Debug for NativeFunction<TS> {
 pub enum VariableType {
     Captured(usize),
     Stack(usize),
+    Global(usize),
 }
 
 #[derive(Debug)]
 pub enum Expression<TS: TypeSystem> {
     RawValue(TS::Value),
     Variable(VariableType),
-    Global(usize),
     BinaryOpEval(TS::BinaryOp, Box<[Expression<TS>; 2]>),
     UnaryOpEval(TS::UnaryOp, Box<Expression<TS>>),
     StaticFunctionCall(FunctionRef<TS>, Vec<Expression<TS>>),
@@ -59,5 +59,9 @@ impl<TS: TypeSystem> Expression<TS> {
 
     pub fn captured(addr: usize) -> Expression<TS> {
         Expression::Variable(VariableType::Captured(addr))
+    }
+
+    pub fn global(addr: usize) -> Expression<TS> {
+        Expression::Variable(VariableType::Global(addr))
     }
 }

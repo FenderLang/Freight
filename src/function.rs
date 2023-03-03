@@ -27,7 +27,7 @@ pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) arg_count: usize,
     pub(crate) stack_size: usize,
     pub(crate) location: usize,
-    pub(crate) function_type: FunctionType<TS>,
+    pub function_type: FunctionType<TS>,
 }
 
 impl<TS: TypeSystem> FunctionWriter<TS> {
@@ -50,6 +50,10 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
             expressions: vec![],
             function_type: FunctionType::CapturingDef(capture),
         }
+    }
+
+    pub fn set_captures(&mut self, capture: Vec<VariableType>) {
+        self.function_type = FunctionType::CapturingDef(capture);
     }
 
     pub fn create_variable(&mut self) -> usize {

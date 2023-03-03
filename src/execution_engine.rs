@@ -16,6 +16,7 @@ pub struct Function<TS: TypeSystem> {
     pub(crate) arg_count: usize,
 }
 
+#[derive(Debug)]
 pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) globals: Vec<TS::Value>,
     pub(crate) functions: Rc<[Function<TS>]>,
@@ -64,11 +65,10 @@ impl<TS: TypeSystem> Function<TS> {
         if self.expressions.len() == 0 {
             return Ok(Default::default());
         }
-        let stack = &mut *args;
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
-            evaluate(expr, engine, stack, captured)?;
+            evaluate(expr, engine, args, captured)?;
         }
-        evaluate(self.expressions.last().unwrap(), engine, stack, captured)
+        evaluate(self.expressions.last().unwrap(), engine, args, captured)
     }
 }
 
@@ -81,10 +81,10 @@ fn evaluate<TS: TypeSystem>(
     let result = match expr {
         Expression::RawValue(v) => v.clone(),
         Expression::Variable(var) => match var {
-            VariableType::Captured(addr) => captured[*addr].clone(),
-            VariableType::Stack(addr) => stack[*addr].clone(),
+            VariableType::Captured(addr) => captured[*addr].dupe_ref(),
+            VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+            VariableType::Global(addr) => engine.globals[*addr].dupe_ref(),
         },
-        Expression::Global(addr) => engine.globals[*addr].clone(),
         Expression::BinaryOpEval(op, operands) => {
             let [l, r] = &**operands;
             let l = evaluate(l, engine, stack, captured)?;
@@ -98,7 +98,7 @@ fn evaluate<TS: TypeSystem>(
         Expression::StaticFunctionCall(func, args) => {
             let mut collected = Vec::with_capacity(func.stack_size);
             for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?);
+                collected.push(evaluate(arg, engine, stack, captured)?.clone());
             }
             engine.call(func, collected)?
         }
@@ -109,7 +109,7 @@ fn evaluate<TS: TypeSystem>(
             };
             let mut collected = Vec::with_capacity(func.stack_size);
             for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?);
+                collected.push(evaluate(arg, engine, stack, captured)?.clone());
             }
             engine.call(func, collected)?
         }
@@ -124,6 +124,7 @@ fn evaluate<TS: TypeSystem>(
                     .map(|var| match var {
                         VariableType::Captured(addr) => captured[*addr].dupe_ref(),
                         VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+                        VariableType::Global(addr) => engine.globals[*addr].dupe_ref(),
                     })
                     .collect::<Rc<[_]>>()
             );
@@ -137,7 +138,7 @@ fn evaluate<TS: TypeSystem>(
         Expression::NativeFunctionCall(func, args) => {
             let mut collected = Vec::with_capacity(args.len());
             for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?);
+                collected.push(evaluate(arg, engine, stack, captured)?.clone());
             }
             func(engine, collected)?
         }
