@@ -27,7 +27,7 @@ pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) arg_count: usize,
     pub(crate) stack_size: usize,
     pub(crate) location: usize,
-    pub(crate) function_type: FunctionType<TS>,
+    pub function_type: FunctionType<TS>,
 }
 
 impl<TS: TypeSystem> FunctionWriter<TS> {
