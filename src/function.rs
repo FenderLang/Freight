@@ -22,6 +22,7 @@ pub enum FunctionType<TS: TypeSystem> {
     CapturingRef(Rc<[TS::Value]>),
 }
 
+/// Represents a reference to a function that has been included in a VM
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) arg_count: usize,
@@ -52,41 +53,24 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
         }
     }
 
+    /// Convert this into a capturing function which will capture the specified values from its environment
     pub fn set_captures(&mut self, capture: Vec<VariableType>) {
         self.function_type = FunctionType::CapturingDef(capture);
     }
 
+    /// Create a new variable in the scope of this function and return its address
     pub fn create_variable(&mut self) -> usize {
         let var = self.stack_size;
         self.stack_size += 1;
         var
     }
 
-    pub fn assign_value(&mut self, var: usize, expr: Expression<TS>) {
-        self.expressions
-            .push(Expression::AssignStack(var, expr.into()));
-    }
-
+    /// Add an expression to be evaluated when this function is called
     pub fn evaluate_expression(&mut self, expr: Expression<TS>) {
         self.expressions.push(expr);
     }
 
-    pub fn captured_stack_offset(&self, captured: usize) -> usize {
-        captured
-    }
-
-    pub fn argument_stack_offset(&self, arg: usize) -> usize {
-        arg + if let FunctionType::CapturingDef(capture) = &self.function_type {
-            capture.len()
-        } else {
-            0
-        }
-    }
-
-    pub fn return_expression(&mut self, expr: Expression<TS>) {
-        self.evaluate_expression(expr);
-    }
-
+    /// Create a function from this writer
     pub fn build(self) -> Function<TS> {
         Function {
             expressions: self.expressions,
@@ -97,14 +81,17 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
 }
 
 impl<TS: TypeSystem> FunctionRef<TS> {
+    /// The number of arguments the function takes
     pub fn arg_count(&self) -> usize {
         self.arg_count
     }
 
+    /// The total stack space allocated to the function
     pub fn stack_size(&self) -> usize {
         self.stack_size
     }
 
+    /// The address of the function in the function table
     pub fn address(&self) -> usize {
         self.location
     }
