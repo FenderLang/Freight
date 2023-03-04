@@ -44,12 +44,13 @@ impl<TS: TypeSystem> VMWriter<TS> {
         }
     }
 
-    pub fn include_native_function<const N: usize>(
+    pub fn include_native_function(
         &mut self,
         f: NativeFunction<TS>,
+        args: usize,
     ) -> FunctionRef<TS> {
-        let mut func = FunctionWriter::new(N);
-        let args = (0..N)
+        let mut func = FunctionWriter::new(args);
+        let args = (0..args)
             .map(|n| Expression::stack(n))
             .collect();
         func.evaluate_expression(Expression::NativeFunctionCall(f, args));
