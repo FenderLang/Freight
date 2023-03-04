@@ -43,6 +43,7 @@ pub enum Expression<TS: TypeSystem> {
     Variable(VariableType),
     BinaryOpEval(TS::BinaryOp, Box<[Expression<TS>; 2]>),
     UnaryOpEval(TS::UnaryOp, Box<Expression<TS>>),
+    Initialize(TS::Init, Vec<Expression<TS>>),
     StaticFunctionCall(FunctionRef<TS>, Vec<Expression<TS>>),
     DynamicFunctionCall(Box<Expression<TS>>, Vec<Expression<TS>>),
     NativeFunctionCall(NativeFunction<TS>, Vec<Expression<TS>>),
