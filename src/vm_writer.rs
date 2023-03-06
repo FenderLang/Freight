@@ -2,7 +2,6 @@ use crate::{
     execution_engine::{ExecutionEngine, Function},
     expression::{Expression, NativeFunction},
     function::{FunctionRef, FunctionWriter},
-    value::Value,
     TypeSystem,
 };
 
@@ -26,11 +25,13 @@ impl<TS: TypeSystem> VMWriter<TS> {
         }
     }
 
+    /// Create a new global variable and return its address
     pub fn create_global(&mut self) -> usize {
         self.globals += 1;
         self.globals - 1
     }
 
+    /// Include a function in the VM and return a reference to it
     pub fn include_function(&mut self, function: FunctionWriter<TS>) -> FunctionRef<TS> {
         let location = self.functions.len();
         let (arg_count, stack_size) = (function.args, function.stack_size);
@@ -44,6 +45,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
         }
     }
 
+    /// Create a wrapper for a native function and return a reference to it
     pub fn include_native_function(
         &mut self,
         f: NativeFunction<TS>,
@@ -57,9 +59,11 @@ impl<TS: TypeSystem> VMWriter<TS> {
         self.include_function(func)
     }
 
+    /// Build an [ExecutionEngine] with the given function as an entry point
     pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionEngine<TS> {
         ExecutionEngine {
-            globals: vec![Value::uninitialized_reference(); self.globals],
+            num_globals: self.globals,
+            globals: vec![],
             functions: self.functions.into(),
             entry_point: entry_point.location,
             stack_size: entry_point.stack_size,

@@ -18,6 +18,7 @@ pub struct Function<TS: TypeSystem> {
 
 #[derive(Debug)]
 pub struct ExecutionEngine<TS: TypeSystem> {
+    pub(crate) num_globals: usize,
     pub(crate) globals: Vec<TS::Value>,
     pub(crate) functions: Rc<[Function<TS>]>,
     pub(crate) entry_point: usize,
@@ -25,7 +26,9 @@ pub struct ExecutionEngine<TS: TypeSystem> {
 }
 
 impl<TS: TypeSystem> ExecutionEngine<TS> {
+    /// Run the VM
     pub fn run(&mut self) -> Result<TS::Value, FreightError> {
+        self.globals = vec![Value::uninitialized_reference(); self.num_globals];
         self.functions.clone()[self.entry_point].call(
             self,
             &mut *vec![Value::uninitialized_reference(); self.stack_size],
