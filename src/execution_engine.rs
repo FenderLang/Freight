@@ -4,7 +4,7 @@ use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType},
-    operators::{binary::BinaryOperator, unary::UnaryOperator},
+    operators::{BinaryOperator, UnaryOperator, Initializer},
     value::Value,
     TypeSystem,
 };
@@ -154,6 +154,13 @@ fn evaluate<TS: TypeSystem>(
             target.assign(value);
             Default::default()
         }
+        Expression::Initialize(init, args) => {
+            let mut collected = Vec::with_capacity(args.len());
+            for arg in args {
+                collected.push(evaluate(arg, engine, stack, captured)?);
+            }
+            init.initialize(collected)
+        },
     };
     Ok(result)
 }

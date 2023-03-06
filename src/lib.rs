@@ -1,4 +1,4 @@
-use operators::{binary::BinaryOperator, unary::UnaryOperator};
+use operators::{BinaryOperator, UnaryOperator, Initializer};
 use std::fmt::Debug;
 use value::Value;
 
@@ -14,6 +14,7 @@ pub trait TypeSystem: Debug + Clone + 'static {
     type Value: Value<TS = Self>;
     type UnaryOp: UnaryOperator<Self::Value>;
     type BinaryOp: BinaryOperator<Self::Value>;
+    type Init: Initializer<Self::Value>;
     type TypeId: PartialEq + Debug;
 }
 

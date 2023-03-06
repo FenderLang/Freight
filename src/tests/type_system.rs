@@ -2,7 +2,7 @@
 
 use crate::{
     function::FunctionRef,
-    operators::{binary::BinaryOperator, unary::UnaryOperator},
+    operators::{BinaryOperator, UnaryOperator, Initializer},
     value::Value,
     TypeSystem,
 };
@@ -18,6 +18,8 @@ impl TypeSystem for TestTypeSystem {
     type BinaryOp = TestBinaryOperator;
 
     type TypeId = TestTypeId;
+
+    type Init = ();
 }
 
 #[derive(Debug, Clone)]
