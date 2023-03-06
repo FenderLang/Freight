@@ -48,6 +48,8 @@ pub enum Expression<TS: TypeSystem> {
     BinaryOpEval(TS::BinaryOp, Box<[Expression<TS>; 2]>),
     /// Evaluate a unary operation on a sub-expression
     UnaryOpEval(TS::UnaryOp, Box<Expression<TS>>),
+    Initialize(TS::Init, Vec<Expression<TS>>),
+
     /// Invoke a function that is known at compiletime
     StaticFunctionCall(FunctionRef<TS>, Vec<Expression<TS>>),
     /// Invoke a function whose identity is not known until runtime
