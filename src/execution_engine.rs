@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use crate::error::OrReturn;
 
 use crate::{
     error::FreightError,
@@ -14,6 +15,7 @@ pub struct Function<TS: TypeSystem> {
     pub(crate) expressions: Vec<Expression<TS>>,
     pub(crate) stack_size: usize,
     pub(crate) arg_count: usize,
+    pub(crate) return_target: usize,
 }
 
 #[derive(Debug)]
@@ -23,6 +25,8 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) functions: Rc<[Function<TS>]>,
     pub(crate) entry_point: usize,
     pub(crate) stack_size: usize,
+    pub(crate) return_target: usize,
+    pub(crate) return_value: TS::Value,
 }
 
 impl<TS: TypeSystem> ExecutionEngine<TS> {
@@ -69,9 +73,18 @@ impl<TS: TypeSystem> Function<TS> {
             return Ok(Default::default());
         }
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
-            evaluate(expr, engine, args, captured)?;
+            match evaluate(expr, engine, args, captured) {
+                Err(FreightError::Return {target}) => {
+                    if target == self.return_target {
+                        return Ok(std::mem::take(&mut engine.return_value));
+                    } else {
+                        return Err(FreightError::Return {target});
+                    }
+                },
+                _ => ()
+            }
         }
-        evaluate(self.expressions.last().unwrap(), engine, args, captured)
+        evaluate(self.expressions.last().unwrap(), engine, args, captured).or_return(self.return_target, engine)
     }
 }
 
@@ -164,6 +177,13 @@ fn evaluate<TS: TypeSystem>(
             }
             init.initialize(collected)
         },
+        Expression::ReturnTarget(target, expr) => {
+            evaluate(&**expr, engine, stack, captured).or_return(*target, engine)?
+        }
+        Expression::Return(target, expr) => {
+            engine.return_value = evaluate(&**expr, engine, stack, captured)?;
+            return Err(FreightError::Return{target: *target});
+        }
     };
     Ok(result)
 }

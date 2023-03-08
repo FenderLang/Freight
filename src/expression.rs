@@ -64,6 +64,10 @@ pub enum Expression<TS: TypeSystem> {
     AssignGlobal(usize, Box<Expression<TS>>),
     /// Assign to a reference that will not be determined until runtime
     AssignDynamic(Box<[Expression<TS>; 2]>),
+    /// An expression which can be returned to
+    ReturnTarget(usize, Box<Expression<TS>>),
+    /// Return to the specified return target
+    Return(usize, Box<Expression<TS>>),
 }
 
 impl<TS: TypeSystem> Expression<TS> {
