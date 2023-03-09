@@ -8,29 +8,29 @@ mod type_system;
 fn test_functions() {
     let mut writer = VMWriter::<TestTypeSystem>::new();
     let mut add = FunctionWriter::new(2);
-    let a = add.argument_stack_offset(0);
-    let b = add.argument_stack_offset(1);
-    add.return_expression(Expression::BinaryOpEval(
+    let a = 0;
+    let b = 1;
+    add.evaluate_expression(Expression::BinaryOpEval(
         TestBinaryOperator::Add,
         [Expression::stack(a), Expression::stack(b)].into(),
     ));
-    let add = writer.include_function(add);
+    let add = writer.include_function(add, 0);
     let mut main = FunctionWriter::new(0);
     let x = main.create_variable();
     let y = main.create_variable();
-    main.assign_value(
+    main.evaluate_expression(Expression::AssignStack(
         x,
-        Expression::RawValue(TestValueWrapper(TestValue::Number(3))),
-    );
-    main.assign_value(
+        Expression::RawValue(TestValueWrapper(TestValue::Number(3))).into(),
+    ));
+    main.evaluate_expression(Expression::AssignStack(
         y,
-        Expression::RawValue(TestValueWrapper(TestValue::Number(2))),
-    );
-    main.return_expression(Expression::StaticFunctionCall(
+        Expression::RawValue(TestValueWrapper(TestValue::Number(2))).into(),
+    ));
+    main.evaluate_expression(Expression::StaticFunctionCall(
         add,
         vec![Expression::stack(x), Expression::stack(y)],
     ));
-    let main = writer.include_function(main);
+    let main = writer.include_function(main, 0);
     let mut vm = writer.finish(main);
     assert_eq!(vm.run().unwrap(), TestValueWrapper(TestValue::Number(5)));
 }
