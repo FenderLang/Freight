@@ -39,11 +39,10 @@ impl<TS: TypeSystem> VMWriter<TS> {
     }
 
     /// Include a function in the VM and return a reference to it
-    pub fn include_function(&mut self, function: FunctionWriter<TS>) -> FunctionRef<TS> {
+    pub fn include_function(&mut self, function: FunctionWriter<TS>, return_target: usize) -> FunctionRef<TS> {
         let location = self.functions.len();
         let (arg_count, stack_size) = (function.args, function.stack_size);
         let function_type = function.function_type.clone();
-        let return_target = self.create_return_target();
         self.functions.push(function.build(return_target));
         FunctionRef {
             arg_count,
@@ -64,7 +63,8 @@ impl<TS: TypeSystem> VMWriter<TS> {
             .map(|n| Expression::stack(n))
             .collect();
         func.evaluate_expression(Expression::NativeFunctionCall(f, args));
-        self.include_function(func)
+        let return_target = self.create_return_target();
+        self.include_function(func, return_target)
     }
 
     /// Build an [ExecutionEngine] with the given function as an entry point

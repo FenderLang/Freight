@@ -1,11 +1,11 @@
-use std::rc::Rc;
 use crate::error::OrReturn;
+use std::rc::Rc;
 
 use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType},
-    operators::{BinaryOperator, UnaryOperator, Initializer},
+    operators::{BinaryOperator, Initializer, UnaryOperator},
     value::Value,
     TypeSystem,
 };
@@ -74,17 +74,18 @@ impl<TS: TypeSystem> Function<TS> {
         }
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
             match evaluate(expr, engine, args, captured) {
-                Err(FreightError::Return {target}) => {
+                Err(FreightError::Return { target }) => {
                     if target == self.return_target {
                         return Ok(std::mem::take(&mut engine.return_value));
                     } else {
-                        return Err(FreightError::Return {target});
+                        return Err(FreightError::Return { target });
                     }
-                },
-                _ => ()
+                }
+                _ => (),
             }
         }
-        evaluate(self.expressions.last().unwrap(), engine, args, captured).or_return(self.return_target, engine)
+        evaluate(self.expressions.last().unwrap(), engine, args, captured)
+            .or_return(self.return_target, engine)
     }
 }
 
@@ -142,7 +143,7 @@ fn evaluate<TS: TypeSystem>(
                         VariableType::Stack(addr) => stack[*addr].dupe_ref(),
                         VariableType::Global(addr) => engine.globals[*addr].dupe_ref(),
                     })
-                    .collect::<Rc<[_]>>()
+                    .collect::<Rc<[_]>>(),
             );
             func.into()
         }
@@ -176,13 +177,13 @@ fn evaluate<TS: TypeSystem>(
                 collected.push(evaluate(arg, engine, stack, captured)?);
             }
             init.initialize(collected)
-        },
+        }
         Expression::ReturnTarget(target, expr) => {
             evaluate(&**expr, engine, stack, captured).or_return(*target, engine)?
         }
         Expression::Return(target, expr) => {
             engine.return_value = evaluate(&**expr, engine, stack, captured)?;
-            return Err(FreightError::Return{target: *target});
+            return Err(FreightError::Return { target: *target });
         }
     };
     Ok(result)
