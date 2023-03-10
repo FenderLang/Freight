@@ -71,11 +71,12 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     }
 
     /// Create a function from this writer
-    pub fn build(self) -> Function<TS> {
+    pub fn build(self, return_target: usize) -> Function<TS> {
         Function {
             expressions: self.expressions,
             stack_size: self.stack_size,
             arg_count: self.args,
+            return_target,
         }
     }
 }

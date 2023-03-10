@@ -9,6 +9,7 @@ use crate::{
 pub struct VMWriter<TS: TypeSystem> {
     functions: Vec<Function<TS>>,
     globals: usize,
+    next_return_target: usize,
 }
 
 impl<TS: TypeSystem> Default for VMWriter<TS> {
@@ -22,6 +23,7 @@ impl<TS: TypeSystem> VMWriter<TS> {
         Self {
             functions: vec![],
             globals: 0,
+            next_return_target: 0,
         }
     }
 
@@ -31,12 +33,21 @@ impl<TS: TypeSystem> VMWriter<TS> {
         self.globals - 1
     }
 
+    pub fn create_return_target(&mut self) -> usize {
+        self.next_return_target += 1;
+        self.next_return_target - 1
+    }
+
     /// Include a function in the VM and return a reference to it
-    pub fn include_function(&mut self, function: FunctionWriter<TS>) -> FunctionRef<TS> {
+    pub fn include_function(
+        &mut self,
+        function: FunctionWriter<TS>,
+        return_target: usize,
+    ) -> FunctionRef<TS> {
         let location = self.functions.len();
         let (arg_count, stack_size) = (function.args, function.stack_size);
         let function_type = function.function_type.clone();
-        self.functions.push(function.build());
+        self.functions.push(function.build(return_target));
         FunctionRef {
             arg_count,
             stack_size,
@@ -52,11 +63,10 @@ impl<TS: TypeSystem> VMWriter<TS> {
         args: usize,
     ) -> FunctionRef<TS> {
         let mut func = FunctionWriter::new(args);
-        let args = (0..args)
-            .map(|n| Expression::stack(n))
-            .collect();
+        let args = (0..args).map(|n| Expression::stack(n)).collect();
         func.evaluate_expression(Expression::NativeFunctionCall(f, args));
-        self.include_function(func)
+        let return_target = self.create_return_target();
+        self.include_function(func, return_target)
     }
 
     /// Build an [ExecutionEngine] with the given function as an entry point
@@ -67,6 +77,8 @@ impl<TS: TypeSystem> VMWriter<TS> {
             functions: self.functions.into(),
             entry_point: entry_point.location,
             stack_size: entry_point.stack_size,
+            return_target: 0,
+            return_value: Default::default(),
         }
     }
 }

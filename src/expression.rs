@@ -4,20 +4,21 @@ use crate::{
 
 use std::{fmt::Debug, ops::Deref};
 
-pub struct NativeFunction<TS: TypeSystem>(
-    fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>,
-);
+type NativeFuncInnerAlias<TS> = fn(
+    &mut ExecutionEngine<TS>,
+    Vec<<TS as TypeSystem>::Value>,
+) -> Result<<TS as TypeSystem>::Value, FreightError>;
+
+pub struct NativeFunction<TS: TypeSystem>(NativeFuncInnerAlias<TS>);
 
 impl<TS: TypeSystem> NativeFunction<TS> {
-    pub fn new(
-        value: fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>,
-    ) -> Self {
-        Self(value)
+    pub fn new(value: NativeFunction<TS>) -> Self {
+        Self(*value)
     }
 }
 
 impl<TS: TypeSystem> Deref for NativeFunction<TS> {
-    type Target = fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>;
+    type Target = NativeFuncInnerAlias<TS>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -64,6 +65,10 @@ pub enum Expression<TS: TypeSystem> {
     AssignGlobal(usize, Box<Expression<TS>>),
     /// Assign to a reference that will not be determined until runtime
     AssignDynamic(Box<[Expression<TS>; 2]>),
+    /// An expression which can be returned to
+    ReturnTarget(usize, Box<Expression<TS>>),
+    /// Return to the specified return target
+    Return(usize, Box<Expression<TS>>),
 }
 
 impl<TS: TypeSystem> Expression<TS> {

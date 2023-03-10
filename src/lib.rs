@@ -1,4 +1,4 @@
-use operators::{BinaryOperator, UnaryOperator, Initializer};
+use operators::{BinaryOperator, Initializer, UnaryOperator};
 use std::fmt::Debug;
 use value::Value;
 
@@ -12,7 +12,6 @@ pub mod vm_writer;
 
 /// Defines the type system for a programming language
 pub trait TypeSystem: Debug + Clone + 'static {
-
     /// The value type for a language
     type Value: Value<TS = Self>;
     /// The unary operator type for a language

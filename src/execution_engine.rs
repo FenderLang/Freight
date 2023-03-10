@@ -1,10 +1,11 @@
+use crate::error::OrReturn;
 use std::rc::Rc;
 
 use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType},
-    operators::{BinaryOperator, UnaryOperator, Initializer},
+    operators::{BinaryOperator, Initializer, UnaryOperator},
     value::Value,
     TypeSystem,
 };
@@ -14,6 +15,7 @@ pub struct Function<TS: TypeSystem> {
     pub(crate) expressions: Vec<Expression<TS>>,
     pub(crate) stack_size: usize,
     pub(crate) arg_count: usize,
+    pub(crate) return_target: usize,
 }
 
 #[derive(Debug)]
@@ -23,6 +25,8 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) functions: Rc<[Function<TS>]>,
     pub(crate) entry_point: usize,
     pub(crate) stack_size: usize,
+    pub(crate) return_target: usize,
+    pub(crate) return_value: TS::Value,
 }
 
 impl<TS: TypeSystem> ExecutionEngine<TS> {
@@ -31,7 +35,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         self.globals = vec![Value::uninitialized_reference(); self.num_globals];
         self.functions.clone()[self.entry_point].call(
             self,
-            &mut *vec![Value::uninitialized_reference(); self.stack_size],
+            &mut vec![Value::uninitialized_reference(); self.stack_size],
             &[],
         )
     }
@@ -45,7 +49,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             args.push(Value::uninitialized_reference());
         }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
-            self.functions.clone()[func.location].call(self, &mut args, &*captures)
+            self.functions.clone()[func.location].call(self, &mut args, captures)
         } else {
             self.functions.clone()[func.location].call(self, &mut args, &[])
         }
@@ -65,13 +69,20 @@ impl<TS: TypeSystem> Function<TS> {
                 actual: args.len(),
             });
         }
-        if self.expressions.len() == 0 {
+        if self.expressions.is_empty() {
             return Ok(Default::default());
         }
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
-            evaluate(expr, engine, args, captured)?;
+            if let Err(FreightError::Return { target }) = evaluate(expr, engine, args, captured) {
+                if target == self.return_target {
+                    return Ok(std::mem::take(&mut engine.return_value));
+                } else {
+                    return Err(FreightError::Return { target });
+                }
+            }
         }
         evaluate(self.expressions.last().unwrap(), engine, args, captured)
+            .or_return(self.return_target, engine)
     }
 }
 
@@ -107,7 +118,7 @@ fn evaluate<TS: TypeSystem>(
         }
         Expression::DynamicFunctionCall(func, args) => {
             let func: TS::Value = evaluate(func, engine, stack, captured)?;
-            let Some(func): Option<&FunctionRef<TS>> = (&func).cast_to_function() else {
+            let Some(func): Option<&FunctionRef<TS>> = func.cast_to_function() else {
                 return Err(FreightError::InvalidInvocationTarget);
             };
             let mut collected = Vec::with_capacity(func.stack_size);
@@ -129,7 +140,7 @@ fn evaluate<TS: TypeSystem>(
                         VariableType::Stack(addr) => stack[*addr].dupe_ref(),
                         VariableType::Global(addr) => engine.globals[*addr].dupe_ref(),
                     })
-                    .collect::<Rc<[_]>>()
+                    .collect::<Rc<[_]>>(),
             );
             func.into()
         }
@@ -163,7 +174,14 @@ fn evaluate<TS: TypeSystem>(
                 collected.push(evaluate(arg, engine, stack, captured)?);
             }
             init.initialize(collected)
-        },
+        }
+        Expression::ReturnTarget(target, expr) => {
+            evaluate(&**expr, engine, stack, captured).or_return(*target, engine)?
+        }
+        Expression::Return(target, expr) => {
+            engine.return_value = evaluate(&**expr, engine, stack, captured)?;
+            return Err(FreightError::Return { target: *target });
+        }
     };
     Ok(result)
 }
