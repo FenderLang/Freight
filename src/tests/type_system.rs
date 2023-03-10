@@ -2,7 +2,7 @@
 
 use crate::{
     function::FunctionRef,
-    operators::{BinaryOperator, UnaryOperator, Initializer},
+    operators::{BinaryOperator, UnaryOperator},
     value::Value,
     TypeSystem,
 };

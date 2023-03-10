@@ -73,15 +73,12 @@ impl<TS: TypeSystem> Function<TS> {
             return Ok(Default::default());
         }
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
-            match evaluate(expr, engine, args, captured) {
-                Err(FreightError::Return { target }) => {
-                    if target == self.return_target {
-                        return Ok(std::mem::take(&mut engine.return_value));
-                    } else {
-                        return Err(FreightError::Return { target });
-                    }
+            if let Err(FreightError::Return { target }) = evaluate(expr, engine, args, captured) {
+                if target == self.return_target {
+                    return Ok(std::mem::take(&mut engine.return_value));
+                } else {
+                    return Err(FreightError::Return { target });
                 }
-                _ => (),
             }
         }
         evaluate(self.expressions.last().unwrap(), engine, args, captured)

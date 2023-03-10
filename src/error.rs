@@ -1,6 +1,6 @@
 use std::{error::Error, fmt::Display};
 
-use crate::{TypeSystem, execution_engine::ExecutionEngine};
+use crate::{execution_engine::ExecutionEngine, TypeSystem};
 
 #[derive(Debug, Clone)]
 pub enum FreightError {
@@ -26,12 +26,20 @@ impl Display for FreightError {
 impl Error for FreightError {}
 
 pub trait OrReturn<TS: TypeSystem> {
-    fn or_return(self, id: usize, engine: &mut ExecutionEngine<TS>) -> Result<TS::Value, FreightError>;
+    fn or_return(
+        self,
+        id: usize,
+        engine: &mut ExecutionEngine<TS>,
+    ) -> Result<TS::Value, FreightError>;
 }
 
 impl<TS: TypeSystem> OrReturn<TS> for Result<TS::Value, FreightError> {
-    fn or_return(self, id: usize, engine: &mut ExecutionEngine<TS>) -> Result<<TS as TypeSystem>::Value, FreightError> {
-        if !matches!(self, Err(FreightError::Return {..})) || engine.return_target != id {
+    fn or_return(
+        self,
+        id: usize,
+        engine: &mut ExecutionEngine<TS>,
+    ) -> Result<<TS as TypeSystem>::Value, FreightError> {
+        if !matches!(self, Err(FreightError::Return { .. })) || engine.return_target != id {
             self
         } else {
             Ok(std::mem::take(&mut engine.return_value))
