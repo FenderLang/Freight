@@ -35,7 +35,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         self.globals = vec![Value::uninitialized_reference(); self.num_globals];
         self.functions.clone()[self.entry_point].call(
             self,
-            &mut *vec![Value::uninitialized_reference(); self.stack_size],
+            &mut vec![Value::uninitialized_reference(); self.stack_size],
             &[],
         )
     }
@@ -49,7 +49,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             args.push(Value::uninitialized_reference());
         }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
-            self.functions.clone()[func.location].call(self, &mut args, &*captures)
+            self.functions.clone()[func.location].call(self, &mut args, captures)
         } else {
             self.functions.clone()[func.location].call(self, &mut args, &[])
         }
@@ -69,7 +69,7 @@ impl<TS: TypeSystem> Function<TS> {
                 actual: args.len(),
             });
         }
-        if self.expressions.len() == 0 {
+        if self.expressions.is_empty() {
             return Ok(Default::default());
         }
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
@@ -118,7 +118,7 @@ fn evaluate<TS: TypeSystem>(
         }
         Expression::DynamicFunctionCall(func, args) => {
             let func: TS::Value = evaluate(func, engine, stack, captured)?;
-            let Some(func): Option<&FunctionRef<TS>> = (&func).cast_to_function() else {
+            let Some(func): Option<&FunctionRef<TS>> = func.cast_to_function() else {
                 return Err(FreightError::InvalidInvocationTarget);
             };
             let mut collected = Vec::with_capacity(func.stack_size);

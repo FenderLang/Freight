@@ -4,20 +4,21 @@ use crate::{
 
 use std::{fmt::Debug, ops::Deref};
 
-pub struct NativeFunction<TS: TypeSystem>(
-    fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>,
-);
+type NativeFuncInnerAlias<TS> = fn(
+    &mut ExecutionEngine<TS>,
+    Vec<<TS as TypeSystem>::Value>,
+) -> Result<<TS as TypeSystem>::Value, FreightError>;
+
+pub struct NativeFunction<TS: TypeSystem>(NativeFuncInnerAlias<TS>);
 
 impl<TS: TypeSystem> NativeFunction<TS> {
-    pub fn new(
-        value: fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>,
-    ) -> Self {
-        Self(value)
+    pub fn new(value: NativeFunction<TS>) -> Self {
+        Self(*value)
     }
 }
 
 impl<TS: TypeSystem> Deref for NativeFunction<TS> {
-    type Target = fn(&mut ExecutionEngine<TS>, Vec<TS::Value>) -> Result<TS::Value, FreightError>;
+    type Target = NativeFuncInnerAlias<TS>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
