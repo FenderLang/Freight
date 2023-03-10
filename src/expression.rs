@@ -12,8 +12,8 @@ type NativeFuncInnerAlias<TS> = fn(
 pub struct NativeFunction<TS: TypeSystem>(NativeFuncInnerAlias<TS>);
 
 impl<TS: TypeSystem> NativeFunction<TS> {
-    pub fn new(value: NativeFunction<TS>) -> Self {
-        Self(*value)
+    pub fn new(value: NativeFuncInnerAlias<TS>) -> Self {
+        Self(value)
     }
 }
 
