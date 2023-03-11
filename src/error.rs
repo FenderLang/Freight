@@ -39,10 +39,11 @@ impl<TS: TypeSystem> OrReturn<TS> for Result<TS::Value, FreightError> {
         id: usize,
         engine: &mut ExecutionEngine<TS>,
     ) -> Result<<TS as TypeSystem>::Value, FreightError> {
-        if !matches!(self, Err(FreightError::Return { .. })) || engine.return_target != id {
-            self
-        } else {
-            Ok(std::mem::take(&mut engine.return_value))
+        match self {
+            Err(FreightError::Return { target }) if target == id => {
+                Ok(std::mem::take(&mut engine.return_value))
+            },
+            _ => self,
         }
     }
 }
