@@ -25,7 +25,6 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) functions: Rc<[Function<TS>]>,
     pub(crate) entry_point: usize,
     pub(crate) stack_size: usize,
-    pub(crate) return_target: usize,
     pub(crate) return_value: TS::Value,
 }
 

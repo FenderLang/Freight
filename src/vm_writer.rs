@@ -77,7 +77,6 @@ impl<TS: TypeSystem> VMWriter<TS> {
             functions: self.functions.into(),
             entry_point: entry_point.location,
             stack_size: entry_point.stack_size,
-            return_target: 0,
             return_value: Default::default(),
         }
     }
