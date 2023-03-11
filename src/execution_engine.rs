@@ -112,7 +112,7 @@ fn evaluate<TS: TypeSystem>(
         Expression::StaticFunctionCall(func, args) => {
             let mut collected = Vec::with_capacity(func.stack_size);
             for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?.clone());
+                collected.push(evaluate(arg, engine, stack, captured)?.clone().into_ref());
             }
             engine.call(func, collected)?
         }
@@ -123,7 +123,7 @@ fn evaluate<TS: TypeSystem>(
             };
             let mut collected = Vec::with_capacity(func.stack_size);
             for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?.clone());
+                collected.push(evaluate(arg, engine, stack, captured)?.clone().into_ref());
             }
             engine.call(func, collected)?
         }
