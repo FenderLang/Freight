@@ -16,6 +16,9 @@ pub trait Value: Clone + Default + Debug + From<FunctionRef<Self::TS>> + Partial
     /// Create a new reference to this value
     fn dupe_ref(&self) -> Self;
 
+    /// Convert this value into a reference, if it isn't already
+    fn into_ref(self) -> Self;
+
     /// Attempt to cast this value to a function so it can be dynamically invoked
     fn cast_to_function(&self) -> Option<&FunctionRef<Self::TS>>;
 
