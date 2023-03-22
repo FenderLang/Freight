@@ -31,6 +31,6 @@ fn test_functions() {
         vec![Expression::stack(x), Expression::stack(y)],
     ));
     let main = writer.include_function(main, 0);
-    let mut vm = writer.finish(main);
+    let mut vm = writer.finish_default(main);
     assert_eq!(vm.run().unwrap(), TestValueWrapper(TestValue::Number(5)));
 }
