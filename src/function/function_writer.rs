@@ -1,8 +1,8 @@
 use crate::expression::VariableType;
-use crate::{execution_engine::Function, expression::Expression, TypeSystem};
-
+use crate::{ expression::Expression, TypeSystem};
 use std::fmt::Debug;
-use std::rc::Rc;
+
+use super::{FunctionType, Function};
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
@@ -12,24 +12,7 @@ pub struct FunctionWriter<TS: TypeSystem> {
     pub(crate) function_type: FunctionType<TS>,
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum FunctionType<TS: TypeSystem> {
-    /// Static reference to a function, which can't capture any values.
-    Static,
-    /// Reference to a function which captures values, but hasn't been initialized with those values.
-    CapturingDef(Vec<VariableType>),
-    /// A reference to a function which captures values bundled with those captured values
-    CapturingRef(Rc<[TS::Value]>),
-}
 
-/// Represents a reference to a function that has been included in a VM
-#[derive(Debug, Clone, PartialEq)]
-pub struct FunctionRef<TS: TypeSystem> {
-    pub(crate) arg_count: usize,
-    pub(crate) stack_size: usize,
-    pub(crate) location: usize,
-    pub function_type: FunctionType<TS>,
-}
 
 impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn new(args: usize) -> FunctionWriter<TS> {
@@ -78,22 +61,5 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
             arg_count: self.args,
             return_target,
         }
-    }
-}
-
-impl<TS: TypeSystem> FunctionRef<TS> {
-    /// The number of arguments the function takes
-    pub fn arg_count(&self) -> usize {
-        self.arg_count
-    }
-
-    /// The total stack space allocated to the function
-    pub fn stack_size(&self) -> usize {
-        self.stack_size
-    }
-
-    /// The address of the function in the function table
-    pub fn address(&self) -> usize {
-        self.location
     }
 }

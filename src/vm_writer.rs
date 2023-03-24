@@ -1,7 +1,7 @@
 use crate::{
-    execution_engine::{ExecutionEngine, Function},
+    execution_engine::{ExecutionEngine},
     expression::{Expression, NativeFunction},
-    function::{FunctionRef, FunctionWriter},
+    function::{FunctionRef, FunctionWriter, Function},
     TypeSystem,
 };
 
