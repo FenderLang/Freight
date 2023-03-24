@@ -23,7 +23,7 @@ pub trait TypeSystem: Debug + Clone + 'static {
     /// The type id type for a language
     type TypeId: PartialEq + Debug;
     /// A global context object to be stored in the ExecutionEngine
-    type GlobalContext;
+    type GlobalContext: Debug;
 }
 
 #[cfg(test)]

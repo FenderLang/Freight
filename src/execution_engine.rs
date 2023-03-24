@@ -1,5 +1,3 @@
-use crate::{error::OrReturn, function::Function};
-use std::rc::Rc;
 use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
@@ -8,8 +6,8 @@ use crate::{
     value::Value,
     TypeSystem,
 };
-
-
+use crate::{error::OrReturn, function::Function};
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct ExecutionEngine<TS: TypeSystem> {
@@ -38,7 +36,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
-        while args.len() < func.stack_size {
+        while args.len() < func.arg_count.trimmed_stack_size() {
             args.push(Value::uninitialized_reference());
         }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
@@ -59,7 +57,10 @@ pub fn evaluate<TS: TypeSystem>(
         Expression::RawValue(v) => v.clone(),
         Expression::Variable(var) => match var {
             VariableType::Captured(addr) => captured[*addr].dupe_ref(),
-            VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+            VariableType::Stack(addr) => match stack.get(*addr) {
+                Some(v) => v.dupe_ref(),
+                None => Default::default(),
+            },
             VariableType::Global(addr) => engine.globals[*addr].dupe_ref(),
         },
         Expression::BinaryOpEval(op, operands) => {

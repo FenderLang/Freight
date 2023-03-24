@@ -1,10 +1,10 @@
-use super::FunctionType;
+use super::{FunctionType, arg_count::ArgCount};
 use crate::TypeSystem;
 
 /// Represents a reference to a function that has been included in a VM
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionRef<TS: TypeSystem> {
-    pub(crate) arg_count: usize,
+    pub(crate) arg_count: ArgCount,
     pub(crate) stack_size: usize,
     pub(crate) location: usize,
     pub function_type: FunctionType<TS>,
@@ -13,7 +13,8 @@ pub struct FunctionRef<TS: TypeSystem> {
 impl<TS: TypeSystem> FunctionRef<TS> {
     /// The number of arguments the function takes
     pub fn arg_count(&self) -> usize {
-        self.arg_count
+        // self.arg_count
+        todo!()
     }
 
     /// The total stack space allocated to the function

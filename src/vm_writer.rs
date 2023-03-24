@@ -1,7 +1,7 @@
 use crate::{
-    execution_engine::{ExecutionEngine},
+    execution_engine::ExecutionEngine,
     expression::{Expression, NativeFunction},
-    function::{FunctionRef, FunctionWriter, Function},
+    function::{ArgCount, Function, FunctionRef, FunctionWriter},
     TypeSystem,
 };
 
@@ -60,10 +60,12 @@ impl<TS: TypeSystem> VMWriter<TS> {
     pub fn include_native_function(
         &mut self,
         f: NativeFunction<TS>,
-        args: usize,
+        args: ArgCount,
     ) -> FunctionRef<TS> {
         let mut func = FunctionWriter::new(args);
-        let args = (0..args).map(|n| Expression::stack(n)).collect();
+        let args = (0..args.stack_size())
+            .map(|n| Expression::stack(n))
+            .collect();
         func.evaluate_expression(Expression::NativeFunctionCall(f, args));
         let return_target = self.create_return_target();
         self.include_function(func, return_target)

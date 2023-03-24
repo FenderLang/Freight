@@ -1,24 +1,23 @@
 use crate::expression::VariableType;
-use crate::{ expression::Expression, TypeSystem};
+use crate::{expression::Expression, TypeSystem};
 use std::fmt::Debug;
 
-use super::{FunctionType, Function};
+use super::arg_count::ArgCount;
+use super::{Function, FunctionType};
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
     pub(crate) stack_size: usize,
-    pub(crate) args: usize,
+    pub(crate) args: ArgCount,
     pub(crate) expressions: Vec<Expression<TS>>,
     pub(crate) function_type: FunctionType<TS>,
 }
 
-
-
 impl<TS: TypeSystem> FunctionWriter<TS> {
-    pub fn new(args: usize) -> FunctionWriter<TS> {
+    pub fn new(args: ArgCount) -> FunctionWriter<TS> {
         Self {
             args,
-            stack_size: args,
+            stack_size: args.stack_size(),
             expressions: vec![],
             function_type: FunctionType::Static,
         }
@@ -27,10 +26,10 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     /// Create a capturing function (closure)
     /// args: How many arguments the function will take
     /// capture: What items in the current stack frame to capture when creating an instance
-    pub fn new_capturing(args: usize, capture: Vec<VariableType>) -> FunctionWriter<TS> {
+    pub fn new_capturing(args: ArgCount, capture: Vec<VariableType>) -> FunctionWriter<TS> {
         Self {
             args,
-            stack_size: args,
+            stack_size: args.stack_size(),
             expressions: vec![],
             function_type: FunctionType::CapturingDef(capture),
         }
