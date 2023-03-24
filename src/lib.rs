@@ -22,6 +22,8 @@ pub trait TypeSystem: Debug + Clone + 'static {
     type Init: Initializer<Self::Value>;
     /// The type id type for a language
     type TypeId: PartialEq + Debug;
+    /// A global context object to be stored in the ExecutionEngine
+    type GlobalContext;
 }
 
 #[cfg(test)]

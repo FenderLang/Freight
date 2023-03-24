@@ -26,6 +26,7 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) entry_point: usize,
     pub(crate) stack_size: usize,
     pub(crate) return_value: TS::Value,
+    pub context: TS::GlobalContext,
 }
 
 impl<TS: TypeSystem> ExecutionEngine<TS> {

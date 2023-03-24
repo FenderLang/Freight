@@ -70,7 +70,11 @@ impl<TS: TypeSystem> VMWriter<TS> {
     }
 
     /// Build an [ExecutionEngine] with the given function as an entry point
-    pub fn finish(self, entry_point: FunctionRef<TS>) -> ExecutionEngine<TS> {
+    pub fn finish(
+        self,
+        entry_point: FunctionRef<TS>,
+        context: TS::GlobalContext,
+    ) -> ExecutionEngine<TS> {
         ExecutionEngine {
             num_globals: self.globals,
             globals: vec![],
@@ -78,6 +82,22 @@ impl<TS: TypeSystem> VMWriter<TS> {
             entry_point: entry_point.location,
             stack_size: entry_point.stack_size,
             return_value: Default::default(),
+            context,
+        }
+    }
+
+    pub fn finish_default(self, entry_point: FunctionRef<TS>) -> ExecutionEngine<TS>
+    where
+        TS::GlobalContext: Default,
+    {
+        ExecutionEngine {
+            num_globals: self.globals,
+            globals: vec![],
+            functions: self.functions.into(),
+            entry_point: entry_point.location,
+            stack_size: entry_point.stack_size,
+            return_value: Default::default(),
+            context: Default::default(),
         }
     }
 }

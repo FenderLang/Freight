@@ -20,6 +20,8 @@ impl TypeSystem for TestTypeSystem {
     type TypeId = TestTypeId;
 
     type Init = ();
+
+    type GlobalContext = ();
 }
 
 #[derive(Debug, Clone)]
@@ -82,6 +84,10 @@ impl Value for TestValueWrapper {
 
     fn assign(&mut self, value: <Self::TS as TypeSystem>::Value) {
         self.0 = value.0;
+    }
+
+    fn into_ref(self) -> Self {
+        self
     }
 }
 
