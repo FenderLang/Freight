@@ -20,7 +20,8 @@ pub use function_writer::*;
 #[derive(Debug)]
 pub struct Function<TS: TypeSystem> {
     pub(crate) expressions: Vec<Expression<TS>>,
-    pub(crate) stack_size: usize,
+
+    pub(crate) _stack_size: usize,
     pub(crate) arg_count: ArgCount,
     pub(crate) return_target: usize,
 }
@@ -51,20 +52,13 @@ impl<TS: TypeSystem> Function<TS> {
         dbg!(&args);
         #[cfg(feature = "variadic_functions")]
         let mut args = match self.arg_count {
-            ArgCount::Range { min, max } => match (min, max) {
-                (_, Some(_)) => Ok(args),
-                (None, None) => Err(vec![TS::Value::gen_list(args.to_vec())]),
-                (Some(n), None) => {
-                    // if n == args.len() {
-                    //     Ok(args)
-                    // } else {
-                    let mut ret = args[0..n].to_vec();
-                    ret.push(TS::Value::gen_list(args[n..].to_vec()));
-                    Err(ret)
-                    // }
-                }
-            },
             ArgCount::Fixed(_) => Ok(args),
+            ArgCount::Range { min:_, max:_ } => Ok(args),
+            ArgCount::Variadic { min:_, max } => {
+                let mut ret = args[0..max].to_vec();
+                ret.push(TS::Value::gen_list(args[max..].to_vec()));
+                Err(ret)
+            }
         };
         #[cfg(feature = "variadic_functions")]
         let args = match &mut args {

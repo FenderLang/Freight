@@ -36,7 +36,6 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
-        // dbg!(func);
         while args.len() < func.stack_size - if func.arg_count.max().is_none(){1}else{0}  {
             args.push(Value::uninitialized_reference());
         }
