@@ -46,6 +46,9 @@ impl<TS: TypeSystem> Function<TS> {
         if self.expressions.is_empty() {
             return Ok(Default::default());
         }
+
+        dbg!(self.arg_count);
+        dbg!(&args);
         #[cfg(feature = "variadic_functions")]
         let mut args = match self.arg_count {
             ArgCount::Range { min, max } => match (min, max) {
@@ -68,6 +71,8 @@ impl<TS: TypeSystem> Function<TS> {
             Ok(v) => v,
             Err(v) => &mut v[..],
         };
+
+        dbg!(&args);
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
             if let Err(FreightError::Return { target }) = evaluate(expr, engine, args, captured) {
                 if target == self.return_target {

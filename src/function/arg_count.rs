@@ -68,23 +68,23 @@ impl ArgCount {
         }
     }
 
-    pub fn trimmed_stack_size(&self) -> usize {
-        match self {
-            ArgCount::Fixed(f) => *f,
-            ArgCount::Range {
-                min: _,
-                max: Some(max),
-            } => *max,
-            ArgCount::Range {
-                min: None,
-                max: None,
-            } => 0,
-            ArgCount::Range {
-                min: Some(min),
-                max: _,
-            } => *min,
-        }
-    }
+    // pub fn trimmed_stack_size(&self) -> usize {
+    //     match self {
+    //         ArgCount::Fixed(f) => *f,
+    //         ArgCount::Range {
+    //             min: _,
+    //             max: Some(max),
+    //         } => *max,
+    //         ArgCount::Range {
+    //             min: None,
+    //             max: None,
+    //         } => 0,
+    //         ArgCount::Range {
+    //             min: Some(min),
+    //             max: _,
+    //         } => *min,
+    //     }
+    // }
     pub fn stack_size(&self) -> usize {
         match self {
             ArgCount::Fixed(f) => *f,
@@ -92,7 +92,7 @@ impl ArgCount {
             ArgCount::Range {
                 min: None,
                 max: Some(max),
-            } => *max,
+            } => *max ,
             ArgCount::Range {
                 min: None,
                 max: None,
