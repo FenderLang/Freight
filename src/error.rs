@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display, ops::Range};
+use std::{error::Error, fmt::Display};
 
 use crate::{execution_engine::ExecutionEngine, TypeSystem};
 

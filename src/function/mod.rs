@@ -2,7 +2,6 @@ use crate::{
     error::{FreightError, OrReturn},
     execution_engine::{evaluate, ExecutionEngine},
     expression::Expression,
-    value::Value,
     TypeSystem,
 };
 use std::fmt::Debug;
@@ -48,15 +47,13 @@ impl<TS: TypeSystem> Function<TS> {
             return Ok(Default::default());
         }
 
-        dbg!(self.arg_count);
-        dbg!(&args);
         #[cfg(feature = "variadic_functions")]
         let mut args = match self.arg_count {
             ArgCount::Fixed(_) => Ok(args),
-            ArgCount::Range { min:_, max:_ } => Ok(args),
-            ArgCount::Variadic { min:_, max } => {
+            ArgCount::Range { min: _, max: _ } => Ok(args),
+            ArgCount::Variadic { min: _, max } => {
                 let mut ret = args[0..max].to_vec();
-                ret.push(TS::Value::gen_list(args[max..].to_vec()));
+                ret.push(crate::value::Value::gen_list(args[max..].to_vec()));
                 Err(ret)
             }
         };
@@ -66,7 +63,6 @@ impl<TS: TypeSystem> Function<TS> {
             Err(v) => &mut v[..],
         };
 
-        dbg!(&args);
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
             if let Err(FreightError::Return { target }) = evaluate(expr, engine, args, captured) {
                 if target == self.return_target {
