@@ -25,7 +25,7 @@ impl Display for FreightError {
                 actual,
             } => {
                 let Some(expected_max) = expected_max else {
-                    return write!(f, "Expected between {expected_min} and UNBOUND arguments, got {actual}");
+                    return write!(f, "Expected between {expected_min} and INFINITY arguments, got {actual}");
                 };
 
                 if expected_min == expected_max {

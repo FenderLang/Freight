@@ -31,7 +31,6 @@ impl<TS: TypeSystem> Function<TS> {
         engine: &mut ExecutionEngine<TS>,
         args: &mut [TS::Value],
         captured: &[TS::Value],
-        // real:usize
     ) -> Result<TS::Value, FreightError> {
         match self.arg_count.max() {
             Some(max) if max > args.len() => {
