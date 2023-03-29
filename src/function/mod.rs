@@ -31,7 +31,10 @@ impl<TS: TypeSystem> Function<TS> {
         args: &mut [TS::Value],
         captured: &[TS::Value],
     ) -> Result<TS::Value, FreightError> {
-        if !self.arg_count.valid_arg_count(args.len()-self.variable_count) {
+        if !self
+            .arg_count
+            .valid_arg_count(args.len() - self.variable_count)
+        {
             return Err(FreightError::IncorrectArgumentCount {
                 expected_min: self.arg_count.min(),
                 expected_max: self.arg_count.max(),
@@ -43,20 +46,20 @@ impl<TS: TypeSystem> Function<TS> {
         }
 
         #[cfg(feature = "variadic_functions")]
-        let mut args = match self.arg_count {
-            ArgCount::Fixed(_) => Ok(args),
-            ArgCount::Range { min: _, max: _ } => Ok(args),
-            ArgCount::Variadic { min: _, max } => {
-                let mut ret = args[0..max].to_vec();
-                ret.push(crate::value::Value::gen_list(args[max..args.len()-self.variable_count].to_vec()));
-                ret.append(&mut (args[args.len()-self.variable_count..]).to_vec());
-                Err(ret)
-            }
-        };
+        let mut arg_vec;
+
         #[cfg(feature = "variadic_functions")]
-        let args = match &mut args {
-            Ok(v) => v,
-            Err(v) => &mut v[..],
+        let args = match self.arg_count {
+            ArgCount::Fixed(_) => args,
+            ArgCount::Range { min: _, max: _ } => args,
+            ArgCount::Variadic { min: _, max } => {
+                arg_vec = args[0..max].to_vec();
+                arg_vec.push(crate::value::Value::gen_list(
+                    args[max..args.len() - self.variable_count].to_vec(),
+                ));
+                arg_vec.append(&mut (args[args.len() - self.variable_count..]).to_vec());
+                &mut arg_vec
+            }
         };
 
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
