@@ -1,4 +1,8 @@
-use crate::{expression::Expression, function::{FunctionWriter, ArgCount}, vm_writer::VMWriter};
+use crate::{
+    expression::Expression,
+    function::{ArgCount, FunctionWriter},
+    vm_writer::VMWriter,
+};
 
 use self::type_system::{TestBinaryOperator, TestTypeSystem, TestValue, TestValueWrapper};
 
