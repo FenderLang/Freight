@@ -39,9 +39,6 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         for _ in 0..func.variable_count {
             args.push(Value::uninitialized_reference());
         }
-        while args.len() < (func.arg_count.stack_size()) - func.arg_count.max().is_none() as usize {
-            args.push(Value::uninitialized_reference());
-        }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
             self.functions.clone()[func.location].call(self, &mut args, captures)
         } else {
