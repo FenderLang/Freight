@@ -19,8 +19,6 @@ pub use function_writer::*;
 #[derive(Debug)]
 pub struct Function<TS: TypeSystem> {
     pub(crate) expressions: Vec<Expression<TS>>,
-    pub(crate) variable_count: usize,
-    pub(crate) arg_count: ArgCount,
     pub(crate) return_target: usize,
 }
 
@@ -31,21 +29,9 @@ impl<TS: TypeSystem> Function<TS> {
         args: &mut [TS::Value],
         captured: &[TS::Value],
     ) -> Result<TS::Value, FreightError> {
-        if !self
-            .arg_count
-            .valid_arg_count(args.len() - self.variable_count)
-        {
-            return Err(FreightError::IncorrectArgumentCount {
-                expected_min: self.arg_count.min(),
-                expected_max: self.arg_count.max(),
-                actual: args.len(),
-            });
-        }
         if self.expressions.is_empty() {
             return Ok(Default::default());
         }
-
-        
 
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
             if let Err(FreightError::Return { target }) = evaluate(expr, engine, args, captured) {

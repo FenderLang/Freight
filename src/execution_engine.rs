@@ -38,6 +38,16 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
+        if !func
+            .arg_count
+            .valid_arg_count(args.len())
+        {
+            return Err(FreightError::IncorrectArgumentCount {
+                expected_min: func.arg_count.min(),
+                expected_max: func.arg_count.max(),
+                actual: args.len(),
+            });
+        }
 
         while args.len() < func.arg_count.max_capped() {
             args.push(Value::uninitialized_reference());
