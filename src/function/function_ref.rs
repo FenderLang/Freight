@@ -13,9 +13,8 @@ pub struct FunctionRef<TS: TypeSystem> {
 
 impl<TS: TypeSystem> FunctionRef<TS> {
     /// The number of arguments the function takes
-    pub fn arg_count(&self) -> usize {
-        // self.arg_count
-        todo!()
+    pub fn arg_count(&self) -> ArgCount {
+        self.arg_count
     }
 
     /// The total stack space allocated to the function
