@@ -1,4 +1,4 @@
-#[cfg(feature = "variadic_functions")]
+// #[cfg(feature = "variadic_functions")]
 use crate::function::ArgCount;
 use crate::{
     error::FreightError,
@@ -38,21 +38,17 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
+
+        while args.len() < func.arg_count.max_capped() {
+            args.push(Value::uninitialized_reference());
+        }
+
         #[cfg(feature = "variadic_functions")]
-        match func.arg_count {
-            ArgCount::Fixed(_) => (),
-            ArgCount::Range { min: _, max: _ } => {
-                while args.len()
-                    < (func.arg_count.stack_size()) - func.arg_count.max().is_none() as usize
-                {
-                    args.push(Value::uninitialized_reference());
-                }
-            }
-            ArgCount::Variadic { min: _, max } => {
-                let vargs = args.split_off(max);
-                args.push(crate::value::Value::gen_list(vargs));
-            }
-        };
+        if let ArgCount::Variadic { min: _, max } = func.arg_count {
+            let vargs = args.split_off(max);
+            args.push(crate::value::Value::gen_list(vargs));
+        }
+
         for _ in 0..func.variable_count {
             args.push(Value::uninitialized_reference());
         }
