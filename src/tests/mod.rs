@@ -1,4 +1,8 @@
-use crate::{expression::Expression, function::FunctionWriter, vm_writer::VMWriter};
+use crate::{
+    expression::Expression,
+    function::{ArgCount, FunctionWriter},
+    vm_writer::VMWriter,
+};
 
 use self::type_system::{TestBinaryOperator, TestTypeSystem, TestValue, TestValueWrapper};
 
@@ -7,7 +11,7 @@ mod type_system;
 #[test]
 fn test_functions() {
     let mut writer = VMWriter::<TestTypeSystem>::new();
-    let mut add = FunctionWriter::new(2);
+    let mut add = FunctionWriter::new(ArgCount::Fixed(2));
     let a = 0;
     let b = 1;
     add.evaluate_expression(Expression::BinaryOpEval(
@@ -15,7 +19,7 @@ fn test_functions() {
         [Expression::stack(a), Expression::stack(b)].into(),
     ));
     let add = writer.include_function(add, 0);
-    let mut main = FunctionWriter::new(0);
+    let mut main = FunctionWriter::new(ArgCount::Fixed(0));
     let x = main.create_variable();
     let y = main.create_variable();
     main.evaluate_expression(Expression::AssignStack(

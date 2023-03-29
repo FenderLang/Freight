@@ -24,4 +24,8 @@ pub trait Value: Clone + Default + Debug + From<FunctionRef<Self::TS>> + Partial
 
     /// Assign to this value
     fn assign(&mut self, value: <Self::TS as TypeSystem>::Value);
+
+    #[cfg(feature = "variadic_functions")]
+    /// Create a `Value` type list out of `Vec` of `Value`
+    fn gen_list(values: Vec<Self>) -> Self;
 }

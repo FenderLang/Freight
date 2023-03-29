@@ -1,7 +1,7 @@
 use crate::{
-    execution_engine::{ExecutionEngine, Function},
+    execution_engine::ExecutionEngine,
     expression::{Expression, NativeFunction},
-    function::{FunctionRef, FunctionWriter},
+    function::{ArgCount, Function, FunctionRef, FunctionWriter},
     TypeSystem,
 };
 
@@ -45,12 +45,13 @@ impl<TS: TypeSystem> VMWriter<TS> {
         return_target: usize,
     ) -> FunctionRef<TS> {
         let location = self.functions.len();
-        let (arg_count, stack_size) = (function.args, function.stack_size);
+        let (arg_count, variable_count) = (function.args, function.variable_count);
         let function_type = function.function_type.clone();
         self.functions.push(function.build(return_target));
         FunctionRef {
             arg_count,
-            stack_size,
+            stack_size: arg_count.stack_size() + variable_count,
+            variable_count,
             location,
             function_type,
         }
@@ -60,10 +61,12 @@ impl<TS: TypeSystem> VMWriter<TS> {
     pub fn include_native_function(
         &mut self,
         f: NativeFunction<TS>,
-        args: usize,
+        args: ArgCount,
     ) -> FunctionRef<TS> {
         let mut func = FunctionWriter::new(args);
-        let args = (0..args).map(|n| Expression::stack(n)).collect();
+        let args = (0..args.stack_size())
+            .map(|n| Expression::stack(n))
+            .collect();
         func.evaluate_expression(Expression::NativeFunctionCall(f, args));
         let return_target = self.create_return_target();
         self.include_function(func, return_target)

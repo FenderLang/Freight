@@ -1,6 +1,3 @@
-use crate::error::OrReturn;
-use std::rc::Rc;
-
 use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
@@ -9,14 +6,8 @@ use crate::{
     value::Value,
     TypeSystem,
 };
-
-#[derive(Debug)]
-pub struct Function<TS: TypeSystem> {
-    pub(crate) expressions: Vec<Expression<TS>>,
-    pub(crate) stack_size: usize,
-    pub(crate) arg_count: usize,
-    pub(crate) return_target: usize,
-}
+use crate::{error::OrReturn, function::Function};
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct ExecutionEngine<TS: TypeSystem> {
@@ -45,7 +36,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
-        while args.len() < func.stack_size {
+        for _ in 0..func.variable_count {
             args.push(Value::uninitialized_reference());
         }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
@@ -56,37 +47,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
     }
 }
 
-impl<TS: TypeSystem> Function<TS> {
-    fn call(
-        &self,
-        engine: &mut ExecutionEngine<TS>,
-        args: &mut [TS::Value],
-        captured: &[TS::Value],
-    ) -> Result<TS::Value, FreightError> {
-        if args.len() != self.stack_size {
-            return Err(FreightError::IncorrectArgumentCount {
-                expected: self.arg_count,
-                actual: args.len(),
-            });
-        }
-        if self.expressions.is_empty() {
-            return Ok(Default::default());
-        }
-        for expr in self.expressions.iter().take(self.expressions.len() - 1) {
-            if let Err(FreightError::Return { target }) = evaluate(expr, engine, args, captured) {
-                if target == self.return_target {
-                    return Ok(std::mem::take(&mut engine.return_value));
-                } else {
-                    return Err(FreightError::Return { target });
-                }
-            }
-        }
-        evaluate(self.expressions.last().unwrap(), engine, args, captured)
-            .or_return(self.return_target, engine)
-    }
-}
-
-fn evaluate<TS: TypeSystem>(
+pub fn evaluate<TS: TypeSystem>(
     expr: &Expression<TS>,
     engine: &mut ExecutionEngine<TS>,
     stack: &mut [TS::Value],

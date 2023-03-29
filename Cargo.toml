@@ -7,3 +7,4 @@ edition = "2021"
 
 [features]
 debug_mode=[]
+variadic_functions=[]

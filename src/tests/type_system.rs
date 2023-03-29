@@ -38,6 +38,7 @@ pub enum TestUnaryOperator {
 pub enum TestTypeId {
     Number,
     Function,
+    List,
     Null,
 }
 
@@ -48,6 +49,7 @@ pub struct TestValueWrapper(pub TestValue);
 pub enum TestValue {
     Number(i64),
     Function(FunctionRef<TestTypeSystem>),
+    List(Vec<TestValueWrapper>),
     #[default]
     Null,
 }
@@ -63,6 +65,7 @@ impl Value for TestValueWrapper {
         match &self.0 {
             TestValue::Number(_) => &TestTypeId::Number,
             TestValue::Function(_) => &TestTypeId::Function,
+            TestValue::List(_) => &TestTypeId::List,
             TestValue::Null => &TestTypeId::Null,
         }
     }
@@ -88,6 +91,11 @@ impl Value for TestValueWrapper {
 
     fn into_ref(self) -> Self {
         self
+    }
+
+    #[cfg(feature = "variadic_functions")]
+    fn gen_list(values: Vec<Self>) -> Self {
+        TestValueWrapper(TestValue::List(values))
     }
 }
 
