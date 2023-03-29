@@ -45,12 +45,13 @@ impl<TS: TypeSystem> VMWriter<TS> {
         return_target: usize,
     ) -> FunctionRef<TS> {
         let location = self.functions.len();
-        let (arg_count, stack_size) = (function.args, function.stack_size);
+        let (arg_count, variable_count) = (function.args, function.variable_count);
         let function_type = function.function_type.clone();
         self.functions.push(function.build(return_target));
         FunctionRef {
             arg_count,
-            stack_size,
+            stack_size: arg_count.stack_size() + variable_count,
+            variable_count,
             location,
             function_type,
         }

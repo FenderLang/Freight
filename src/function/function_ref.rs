@@ -7,6 +7,7 @@ pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) arg_count: ArgCount,
     pub(crate) stack_size: usize,
     pub(crate) location: usize,
+    pub(crate) variable_count: usize,
     pub function_type: FunctionType<TS>,
 }
 

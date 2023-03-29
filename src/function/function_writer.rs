@@ -7,7 +7,7 @@ use super::{Function, FunctionType};
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
-    pub(crate) stack_size: usize,
+    pub(crate) variable_count: usize,
     pub(crate) args: ArgCount,
     pub(crate) expressions: Vec<Expression<TS>>,
     pub(crate) function_type: FunctionType<TS>,
@@ -17,7 +17,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn new(args: ArgCount) -> FunctionWriter<TS> {
         Self {
             args,
-            stack_size: args.stack_size(),
+            variable_count: 0,
             expressions: vec![],
             function_type: FunctionType::Static,
         }
@@ -29,7 +29,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn new_capturing(args: ArgCount, capture: Vec<VariableType>) -> FunctionWriter<TS> {
         Self {
             args,
-            stack_size: args.stack_size(),
+            variable_count: 0,
             expressions: vec![],
             function_type: FunctionType::CapturingDef(capture),
         }
@@ -42,8 +42,8 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
 
     /// Create a new variable in the scope of this function and return its address
     pub fn create_variable(&mut self) -> usize {
-        let var = self.stack_size;
-        self.stack_size += 1;
+        let var = self.args.stack_size() + self.variable_count;
+        self.variable_count += 1;
         var
     }
 
@@ -56,7 +56,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn build(self, return_target: usize) -> Function<TS> {
         Function {
             expressions: self.expressions,
-            _stack_size: self.stack_size,
+            variable_count: self.variable_count,
             arg_count: self.args,
             return_target,
         }

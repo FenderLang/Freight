@@ -19,8 +19,7 @@ pub use function_writer::*;
 #[derive(Debug)]
 pub struct Function<TS: TypeSystem> {
     pub(crate) expressions: Vec<Expression<TS>>,
-
-    pub(crate) _stack_size: usize,
+    pub(crate) variable_count: usize,
     pub(crate) arg_count: ArgCount,
     pub(crate) return_target: usize,
 }
@@ -32,15 +31,12 @@ impl<TS: TypeSystem> Function<TS> {
         args: &mut [TS::Value],
         captured: &[TS::Value],
     ) -> Result<TS::Value, FreightError> {
-        match self.arg_count.max() {
-            Some(max) if max > args.len() => {
-                return Err(FreightError::IncorrectArgumentCount {
-                    expected_min: self.arg_count.min(),
-                    expected_max: self.arg_count.max(),
-                    actual: args.len(),
-                });
-            }
-            _ => (),
+        if !self.arg_count.valid_arg_count(args.len()-self.variable_count) {
+            return Err(FreightError::IncorrectArgumentCount {
+                expected_min: self.arg_count.min(),
+                expected_max: self.arg_count.max(),
+                actual: args.len(),
+            });
         }
         if self.expressions.is_empty() {
             return Ok(Default::default());
@@ -52,7 +48,8 @@ impl<TS: TypeSystem> Function<TS> {
             ArgCount::Range { min: _, max: _ } => Ok(args),
             ArgCount::Variadic { min: _, max } => {
                 let mut ret = args[0..max].to_vec();
-                ret.push(crate::value::Value::gen_list(args[max..].to_vec()));
+                ret.push(crate::value::Value::gen_list(args[max..args.len()-self.variable_count].to_vec()));
+                ret.append(&mut (args[args.len()-self.variable_count..]).to_vec());
                 Err(ret)
             }
         };

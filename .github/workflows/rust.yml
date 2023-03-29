@@ -19,6 +19,10 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Build variadic_functions
+      run: cargo build --features variadic_functions --verbose
+    - name: Run tests variadic_functions
+      run: cargo test --features variadic_functions --verbose
 
   lint:
 
@@ -30,3 +34,5 @@ jobs:
       run: cargo fmt --check
     - name: Clippy
       run: cargo clippy --no-deps -- -Dwarnings
+    - name: Clippy variadic_functions
+      run: cargo clippy --features variadic_functions --no-deps -- -Dwarnings

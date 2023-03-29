@@ -36,7 +36,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
-        while args.len() < func.stack_size - func.arg_count.max().is_none() as usize {
+        for _ in 0..func.variable_count {
+            args.push(Value::uninitialized_reference());
+        }
+        while args.len() < (func.arg_count.stack_size()) - func.arg_count.max().is_none() as usize {
             args.push(Value::uninitialized_reference());
         }
         if let FunctionType::CapturingRef(captures) = &func.function_type {
