@@ -1,4 +1,4 @@
-use super::{FunctionType, arg_count::ArgCount};
+use super::{arg_count::ArgCount, FunctionType};
 use crate::TypeSystem;
 
 /// Represents a reference to a function that has been included in a VM
