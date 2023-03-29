@@ -1,7 +1,7 @@
 use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
-    function::{FunctionRef, FunctionType},
+    function::{ArgCount, FunctionRef, FunctionType},
     operators::{BinaryOperator, Initializer, UnaryOperator},
     value::Value,
     TypeSystem,
@@ -36,6 +36,20 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
+        while args.len() < (func.arg_count.stack_size()) - func.arg_count.max().is_none() as usize {
+            args.push(Value::uninitialized_reference());
+        }
+        #[cfg(feature = "variadic_functions")]
+        let mut args = match func.arg_count {
+            ArgCount::Fixed(_) => args,
+            ArgCount::Range { min: _, max: _ } => args,
+            ArgCount::Variadic { min: _, max } => {
+                let mut arg_vec = args[0..max].to_vec();
+                arg_vec.push(crate::value::Value::gen_list(args[max..].to_vec()));
+                arg_vec
+            }
+        };
+
         for _ in 0..func.variable_count {
             args.push(Value::uninitialized_reference());
         }

@@ -45,22 +45,7 @@ impl<TS: TypeSystem> Function<TS> {
             return Ok(Default::default());
         }
 
-        #[cfg(feature = "variadic_functions")]
-        let mut arg_vec;
-
-        #[cfg(feature = "variadic_functions")]
-        let args = match self.arg_count {
-            ArgCount::Fixed(_) => args,
-            ArgCount::Range { min: _, max: _ } => args,
-            ArgCount::Variadic { min: _, max } => {
-                arg_vec = args[0..max].to_vec();
-                arg_vec.push(crate::value::Value::gen_list(
-                    args[max..args.len() - self.variable_count].to_vec(),
-                ));
-                arg_vec.append(&mut (args[args.len() - self.variable_count..]).to_vec());
-                &mut arg_vec
-            }
-        };
+        
 
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
             if let Err(FreightError::Return { target }) = evaluate(expr, engine, args, captured) {
