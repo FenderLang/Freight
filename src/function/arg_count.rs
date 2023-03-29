@@ -94,7 +94,7 @@ impl ArgCount {
         }
     }
 
-    pub fn max_capped(&self) -> usize{
+    pub fn max_capped(&self) -> usize {
         match self {
             ArgCount::Range { min: _, max } => *max,
             ArgCount::Fixed(f) => *f,
