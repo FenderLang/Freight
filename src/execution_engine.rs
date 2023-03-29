@@ -49,7 +49,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 }
             }
             ArgCount::Variadic { min: _, max } => {
-                let vargs = args[0..max].to_vec();
+                let vargs = args.split_off(max);
                 args.push(crate::value::Value::gen_list(vargs));
             }
         };
