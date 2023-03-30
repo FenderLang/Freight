@@ -26,7 +26,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
     /// Run the VM
     pub fn run(&mut self) -> Result<TS::Value, FreightError> {
         self.globals = vec![Value::uninitialized_reference(); self.num_globals];
-        let main = unsafe { &*self.get_function(self.entry_point) };
+        let main = self.get_function(self.entry_point);
 
         main.call(
             self,
@@ -36,7 +36,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
     }
 
     #[inline]
-    pub fn get_function(&self, id: usize) -> *const Function<TS> {
+    pub fn get_function<'a>(&self, id: usize) -> &'a Function<TS> {
         unsafe { &(*self.functions.get())[id] }
     }
 
@@ -67,7 +67,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         for _ in 0..func.variable_count {
             args.push(Value::uninitialized_reference());
         }
-        let function = unsafe { &*self.get_function(func.location) };
+        let function = self.get_function(func.location);
         if let FunctionType::CapturingRef(captures) = &func.function_type {
             function.call(self, &mut args, captures)
         } else {
