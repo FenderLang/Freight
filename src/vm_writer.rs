@@ -44,17 +44,9 @@ impl<TS: TypeSystem> VMWriter<TS> {
         function: FunctionWriter<TS>,
         return_target: usize,
     ) -> FunctionRef<TS> {
-        let location = self.functions.len();
-        let (arg_count, variable_count) = (function.args, function.variable_count);
-        let function_type = function.function_type.clone();
+        let fref = function.to_ref(self.functions.len());
         self.functions.push(function.build(return_target));
-        FunctionRef {
-            arg_count,
-            stack_size: arg_count.stack_size() + variable_count,
-            variable_count,
-            location,
-            function_type,
-        }
+        fref
     }
 
     /// Create a wrapper for a native function and return a reference to it

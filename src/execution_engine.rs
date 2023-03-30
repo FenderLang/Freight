@@ -1,3 +1,7 @@
+use crate::{error::OrReturn, function::FunctionWriter};
+use std::{cell::UnsafeCell, rc::Rc};
+
+use crate::function::Function;
 use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
@@ -6,14 +10,12 @@ use crate::{
     value::Value,
     TypeSystem,
 };
-use crate::{error::OrReturn, function::Function};
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) num_globals: usize,
     pub(crate) globals: Vec<TS::Value>,
-    pub(crate) functions: Rc<[Function<TS>]>,
+    pub(crate) functions: UnsafeCell<Vec<Function<TS>>>,
     pub(crate) entry_point: usize,
     pub(crate) stack_size: usize,
     pub(crate) return_value: TS::Value,
@@ -24,11 +26,37 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
     /// Run the VM
     pub fn run(&mut self) -> Result<TS::Value, FreightError> {
         self.globals = vec![Value::uninitialized_reference(); self.num_globals];
-        self.functions.clone()[self.entry_point].call(
+        let main = unsafe { &*self.get_function(self.entry_point) };
+
+        main.call(
             self,
             &mut vec![Value::uninitialized_reference(); self.stack_size],
             &[],
         )
+    }
+
+    #[inline]
+    pub fn get_function(&self, id: usize) -> *const Function<TS> {
+        unsafe { &(*self.functions.get())[id] }
+    }
+
+    pub fn register_function(
+        &mut self,
+        func: FunctionWriter<TS>,
+        return_target: usize,
+    ) -> FunctionRef<TS> {
+        unsafe {
+            let functions = &mut *self.functions.get();
+            let func_ref = func.to_ref(functions.len());
+            let func = func.build(return_target);
+            functions.push(func);
+            func_ref
+        }
+    }
+
+    pub fn create_global(&mut self) -> usize {
+        self.globals.push(Value::uninitialized_reference());
+        self.globals.len() - 1
     }
 
     pub fn call(
@@ -39,10 +67,11 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         for _ in 0..func.variable_count {
             args.push(Value::uninitialized_reference());
         }
+        let function = unsafe { &*self.get_function(func.location) };
         if let FunctionType::CapturingRef(captures) = &func.function_type {
-            self.functions.clone()[func.location].call(self, &mut args, captures)
+            function.call(self, &mut args, captures)
         } else {
-            self.functions.clone()[func.location].call(self, &mut args, &[])
+            function.call(self, &mut args, &[])
         }
     }
 }
