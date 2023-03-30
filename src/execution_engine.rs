@@ -1,15 +1,14 @@
-use crate::{error::OrReturn, function::FunctionWriter};
-use std::{cell::UnsafeCell, rc::Rc};
-
-use crate::function::Function;
 use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
-    function::{FunctionRef, FunctionType},
+    function::{FunctionRef, FunctionType, FunctionWriter},
     operators::{BinaryOperator, Initializer, UnaryOperator},
     value::Value,
     TypeSystem,
 };
+use crate::{error::OrReturn, function::Function};
+use std::cell::UnsafeCell;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct ExecutionEngine<TS: TypeSystem> {
@@ -64,6 +63,24 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         mut args: Vec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
+        if !func.arg_count.valid_arg_count(args.len()) {
+            return Err(FreightError::IncorrectArgumentCount {
+                expected_min: func.arg_count.min(),
+                expected_max: func.arg_count.max(),
+                actual: args.len(),
+            });
+        }
+
+        while args.len() < func.arg_count.max_capped() {
+            args.push(Value::uninitialized_reference());
+        }
+
+        #[cfg(feature = "variadic_functions")]
+        if let ArgCount::Variadic { min: _, max } = func.arg_count {
+            let vargs = args.split_off(max);
+            args.push(crate::value::Value::gen_list(vargs));
+        }
+
         for _ in 0..func.variable_count {
             args.push(Value::uninitialized_reference());
         }

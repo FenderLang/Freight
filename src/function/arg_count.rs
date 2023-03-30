@@ -94,6 +94,15 @@ impl ArgCount {
         }
     }
 
+    pub fn max_capped(&self) -> usize {
+        match self {
+            ArgCount::Range { min: _, max } => *max,
+            ArgCount::Fixed(f) => *f,
+            #[cfg(feature = "variadic_functions")]
+            ArgCount::Variadic { min: _, max } => *max,
+        }
+    }
+
     pub fn valid_arg_count(&self, val: usize) -> bool {
         match self {
             ArgCount::Range { min, max } => val >= *min && val <= *max,

@@ -66,8 +66,6 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
     pub fn build(self, return_target: usize) -> Function<TS> {
         Function {
             expressions: self.expressions,
-            variable_count: self.variable_count,
-            arg_count: self.args,
             return_target,
         }
     }
