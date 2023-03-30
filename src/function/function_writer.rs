@@ -3,7 +3,7 @@ use crate::{expression::Expression, TypeSystem};
 use std::fmt::Debug;
 
 use super::arg_count::ArgCount;
-use super::{Function, FunctionType};
+use super::{Function, FunctionRef, FunctionType};
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
@@ -32,6 +32,16 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
             variable_count: 0,
             expressions: vec![],
             function_type: FunctionType::CapturingDef(capture),
+        }
+    }
+
+    pub fn to_ref(&self, location: usize) -> FunctionRef<TS> {
+        FunctionRef {
+            arg_count: self.args,
+            stack_size: self.args.stack_size() + self.variable_count,
+            variable_count: self.variable_count,
+            location,
+            function_type: self.function_type.clone(),
         }
     }
 
