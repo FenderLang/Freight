@@ -1,3 +1,5 @@
+#[cfg(feature = "variadic_functions")]
+use crate::function::ArgCount;
 use crate::{
     error::FreightError,
     expression::{Expression, VariableType},
