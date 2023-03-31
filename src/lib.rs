@@ -18,7 +18,7 @@ pub trait TypeSystem: Debug + Clone + 'static {
     /// The binary operator type for a language
     type BinaryOp: BinaryOperator<Self::Value>;
     /// The initializers type for creating new values that take multiple expressions
-    type Init: Initializer<Self::Value>;
+    type Init: Initializer<Self>;
     /// The type id type for a language
     type TypeId: PartialEq + Debug;
     /// A global context object to be stored in the ExecutionEngine
