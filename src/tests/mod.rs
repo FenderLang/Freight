@@ -1,7 +1,7 @@
 use crate::{
+    execution_engine::ExecutionEngine,
     expression::Expression,
     function::{ArgCount, FunctionWriter},
-    vm_writer::VMWriter,
 };
 
 use self::type_system::{TestBinaryOperator, TestTypeSystem, TestValue, TestValueWrapper};
@@ -10,7 +10,7 @@ mod type_system;
 
 #[test]
 fn test_functions() {
-    let mut writer = VMWriter::<TestTypeSystem>::new();
+    let mut engine = ExecutionEngine::<TestTypeSystem>::new_default();
     let mut add = FunctionWriter::new(ArgCount::Fixed(2));
     let a = 0;
     let b = 1;
@@ -18,7 +18,7 @@ fn test_functions() {
         TestBinaryOperator::Add,
         [Expression::stack(a), Expression::stack(b)].into(),
     ));
-    let add = writer.include_function(add, 0);
+    let add = engine.register_function(add, 0);
     let mut main = FunctionWriter::new(ArgCount::Fixed(0));
     let x = main.create_variable();
     let y = main.create_variable();
@@ -34,7 +34,9 @@ fn test_functions() {
         add,
         vec![Expression::stack(x), Expression::stack(y)],
     ));
-    let main = writer.include_function(main, 0);
-    let mut vm = writer.finish_default(main);
-    assert_eq!(vm.run().unwrap(), TestValueWrapper(TestValue::Number(5)));
+    let main = engine.register_function(main, 0);
+    assert_eq!(
+        engine.call(&main, vec![]).unwrap(),
+        TestValueWrapper(TestValue::Number(5))
+    );
 }
