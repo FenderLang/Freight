@@ -17,23 +17,28 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) num_globals: usize,
     pub(crate) globals: Vec<TS::Value>,
     pub(crate) functions: UnsafeCell<Vec<Function<TS>>>,
-    pub(crate) entry_point: usize,
-    pub(crate) stack_size: usize,
+    pub(crate) next_return_target: usize,
     pub(crate) return_value: TS::Value,
     pub context: TS::GlobalContext,
 }
 
 impl<TS: TypeSystem> ExecutionEngine<TS> {
-    /// Run the VM
-    pub fn run(&mut self) -> Result<TS::Value, FreightError> {
-        self.globals = vec![Value::uninitialized_reference(); self.num_globals];
-        let main = self.get_function(self.entry_point);
+    pub fn new(context: TS::GlobalContext) -> Self {
+        Self {
+            num_globals: 0,
+            globals: vec![],
+            functions: vec![].into(),
+            next_return_target: 0,
+            return_value: Default::default(),
+            context,
+        }
+    }
 
-        main.call(
-            self,
-            &mut vec![Value::uninitialized_reference(); self.stack_size],
-            &[],
-        )
+    pub fn new_default() -> Self
+    where
+        TS::GlobalContext: Default,
+    {
+        Self::new(Default::default())
     }
 
     #[inline]
@@ -55,9 +60,18 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
     }
 
+    pub fn create_return_target(&mut self) -> usize {
+        self.next_return_target += 1;
+        self.next_return_target - 1
+    }
+
     pub fn create_global(&mut self) -> usize {
         self.globals.push(Value::uninitialized_reference());
         self.globals.len() - 1
+    }
+
+    pub fn reset_globals(&mut self) {
+        self.globals = vec![Value::uninitialized_reference(); self.num_globals];
     }
 
     pub fn call(
@@ -87,10 +101,11 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             args.push(Value::uninitialized_reference());
         }
         let function = self.get_function(func.location);
-        if let FunctionType::CapturingRef(captures) = &func.function_type {
-            function.call(self, &mut args, captures)
-        } else {
-            function.call(self, &mut args, &[])
+        match &func.function_type {
+            FunctionType::CapturingRef(captures) => function.call(self, &mut args, captures),
+            FunctionType::Static => function.call(self, &mut args, &[]),
+            FunctionType::CapturingDef(_) => Err(FreightError::InvalidInvocationTarget),
+            FunctionType::Native(func) => func(self, args),
         }
     }
 

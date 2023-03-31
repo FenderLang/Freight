@@ -8,7 +8,6 @@ pub mod expression;
 pub mod function;
 pub mod operators;
 pub mod value;
-pub mod vm_writer;
 
 /// Defines the type system for a programming language
 pub trait TypeSystem: Debug + Clone + 'static {
