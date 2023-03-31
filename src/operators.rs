@@ -1,4 +1,4 @@
-use crate::value::Value;
+use crate::{value::Value, execution_engine::ExecutionEngine};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
@@ -16,11 +16,11 @@ pub trait BinaryOperator<V: Value>: Debug + Clone {
 }
 
 pub trait Initializer<TS: crate::TypeSystem>: Debug + Clone {
-    fn initialize(&self, values: Vec<TS::Value>, ctx: &mut TS::GlobalContext) -> TS::Value;
+    fn initialize(&self, values: Vec<TS::Value>, ctx: &mut ExecutionEngine<TS>) -> TS::Value;
 }
 
 impl<TS: crate::TypeSystem> Initializer<TS> for () {
-    fn initialize(&self, _: Vec<TS::Value>, _: &mut TS::GlobalContext) -> TS::Value {
+    fn initialize(&self, _: Vec<TS::Value>, _: &mut ExecutionEngine<TS>) -> TS::Value {
         TS::Value::default()
     }
 }

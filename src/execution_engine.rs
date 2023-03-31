@@ -196,7 +196,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 for arg in args {
                     collected.push(self.evaluate(arg, stack, captured)?);
                 }
-                init.initialize(collected, &mut self.context)
+                init.initialize(collected, self)
             }
             Expression::ReturnTarget(target, expr) => self
                 .evaluate(&**expr, stack, captured)
