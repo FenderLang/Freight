@@ -90,7 +90,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         match &func.function_type {
             FunctionType::CapturingRef(captures) => function.call(self, &mut args, captures),
             FunctionType::Static => function.call(self, &mut args, &[]),
-            FunctionType::CapturingDef(_) => return Err(FreightError::InvalidInvocationTarget),
+            FunctionType::CapturingDef(_) => Err(FreightError::InvalidInvocationTarget),
             FunctionType::Native(func) => func(self, args),
         }
     }
