@@ -93,104 +93,104 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             function.call(self, &mut args, &[])
         }
     }
-}
 
-pub fn evaluate<TS: TypeSystem>(
-    expr: &Expression<TS>,
-    engine: &mut ExecutionEngine<TS>,
-    stack: &mut [TS::Value],
-    captured: &[TS::Value],
-) -> Result<TS::Value, FreightError> {
-    let result = match expr {
-        Expression::RawValue(v) => v.clone(),
-        Expression::Variable(var) => match var {
-            VariableType::Captured(addr) => captured[*addr].dupe_ref(),
-            VariableType::Stack(addr) => stack[*addr].dupe_ref(),
-            VariableType::Global(addr) => engine.globals[*addr].dupe_ref(),
-        },
-        Expression::BinaryOpEval(op, operands) => {
-            let [l, r] = &**operands;
-            let l = evaluate(l, engine, stack, captured)?;
-            let r = evaluate(r, engine, stack, captured)?;
-            op.apply_2(&l, &r)
-        }
-        Expression::UnaryOpEval(op, v) => {
-            let v = evaluate(v, engine, stack, captured)?;
-            op.apply_1(&v)
-        }
-        Expression::StaticFunctionCall(func, args) => {
-            let mut collected = Vec::with_capacity(func.stack_size);
-            for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?.clone().into_ref());
+    pub fn evaluate(
+        &mut self,
+        expr: &Expression<TS>,
+        stack: &mut [TS::Value],
+        captured: &[TS::Value],
+    ) -> Result<TS::Value, FreightError> {
+        let result = match expr {
+            Expression::RawValue(v) => v.clone(),
+            Expression::Variable(var) => match var {
+                VariableType::Captured(addr) => captured[*addr].dupe_ref(),
+                VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+                VariableType::Global(addr) => self.globals[*addr].dupe_ref(),
+            },
+            Expression::BinaryOpEval(op, operands) => {
+                let [l, r] = &**operands;
+                let l = self.evaluate(l, stack, captured)?;
+                let r = self.evaluate(r, stack, captured)?;
+                op.apply_2(&l, &r)
             }
-            engine.call(func, collected)?
-        }
-        Expression::DynamicFunctionCall(func, args) => {
-            let func: TS::Value = evaluate(func, engine, stack, captured)?;
-            let Some(func): Option<&FunctionRef<TS>> = func.cast_to_function() else {
+            Expression::UnaryOpEval(op, v) => {
+                let v = self.evaluate(v, stack, captured)?;
+                op.apply_1(&v)
+            }
+            Expression::StaticFunctionCall(func, args) => {
+                let mut collected = Vec::with_capacity(func.stack_size);
+                for arg in args {
+                    collected.push(self.evaluate(arg, stack, captured)?.clone().into_ref());
+                }
+                self.call(func, collected)?
+            }
+            Expression::DynamicFunctionCall(func, args) => {
+                let func: TS::Value = self.evaluate(func, stack, captured)?;
+                let Some(func): Option<&FunctionRef<TS>> = func.cast_to_function() else {
                 return Err(FreightError::InvalidInvocationTarget);
             };
-            let mut collected = Vec::with_capacity(func.stack_size);
-            for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?.clone().into_ref());
+                let mut collected = Vec::with_capacity(func.stack_size);
+                for arg in args {
+                    collected.push(self.evaluate(arg, stack, captured)?.clone().into_ref());
+                }
+                self.call(func, collected)?
             }
-            engine.call(func, collected)?
-        }
-        Expression::FunctionCapture(func) => {
-            let FunctionType::CapturingDef(capture) = &func.function_type else {
+            Expression::FunctionCapture(func) => {
+                let FunctionType::CapturingDef(capture) = &func.function_type else {
                 return Err(FreightError::InvalidInvocationTarget);
             };
-            let mut func = func.clone();
-            func.function_type = FunctionType::CapturingRef(
-                capture
-                    .iter()
-                    .map(|var| match var {
-                        VariableType::Captured(addr) => captured[*addr].dupe_ref(),
-                        VariableType::Stack(addr) => stack[*addr].dupe_ref(),
-                        VariableType::Global(addr) => engine.globals[*addr].dupe_ref(),
-                    })
-                    .collect::<Rc<[_]>>(),
-            );
-            func.into()
-        }
-        Expression::AssignStack(addr, expr) => {
-            let val = evaluate(expr, engine, stack, captured)?;
-            stack[*addr].assign(val);
-            Default::default()
-        }
-        Expression::NativeFunctionCall(func, args) => {
-            let mut collected = Vec::with_capacity(args.len());
-            for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?.clone());
+                let mut func = func.clone();
+                func.function_type = FunctionType::CapturingRef(
+                    capture
+                        .iter()
+                        .map(|var| match var {
+                            VariableType::Captured(addr) => captured[*addr].dupe_ref(),
+                            VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+                            VariableType::Global(addr) => self.globals[*addr].dupe_ref(),
+                        })
+                        .collect::<Rc<[_]>>(),
+                );
+                func.into()
             }
-            func(engine, collected)?
-        }
-        Expression::AssignGlobal(addr, expr) => {
-            let val = evaluate(expr, engine, stack, captured)?;
-            engine.globals[*addr].assign(val);
-            Default::default()
-        }
-        Expression::AssignDynamic(args) => {
-            let [target, value] = &**args;
-            let mut target = evaluate(target, engine, stack, captured)?.dupe_ref();
-            let value = evaluate(value, engine, stack, captured)?;
-            target.assign(value);
-            Default::default()
-        }
-        Expression::Initialize(init, args) => {
-            let mut collected = Vec::with_capacity(args.len());
-            for arg in args {
-                collected.push(evaluate(arg, engine, stack, captured)?);
+            Expression::AssignStack(addr, expr) => {
+                let val = self.evaluate(expr, stack, captured)?;
+                stack[*addr].assign(val);
+                Default::default()
             }
-            init.initialize(collected)
-        }
-        Expression::ReturnTarget(target, expr) => {
-            evaluate(&**expr, engine, stack, captured).or_return(*target, engine)?
-        }
-        Expression::Return(target, expr) => {
-            engine.return_value = evaluate(&**expr, engine, stack, captured)?;
-            return Err(FreightError::Return { target: *target });
-        }
-    };
-    Ok(result)
+            Expression::NativeFunctionCall(func, args) => {
+                let mut collected = Vec::with_capacity(args.len());
+                for arg in args {
+                    collected.push(self.evaluate(arg, stack, captured)?.clone());
+                }
+                func(self, collected)?
+            }
+            Expression::AssignGlobal(addr, expr) => {
+                let val = self.evaluate(expr, stack, captured)?;
+                self.globals[*addr].assign(val);
+                Default::default()
+            }
+            Expression::AssignDynamic(args) => {
+                let [target, value] = &**args;
+                let mut target = self.evaluate(target, stack, captured)?.dupe_ref();
+                let value = self.evaluate(value, stack, captured)?;
+                target.assign(value);
+                Default::default()
+            }
+            Expression::Initialize(init, args) => {
+                let mut collected = Vec::with_capacity(args.len());
+                for arg in args {
+                    collected.push(self.evaluate(arg, stack, captured)?);
+                }
+                init.initialize(collected)
+            }
+            Expression::ReturnTarget(target, expr) => self
+                .evaluate(&**expr, stack, captured)
+                .or_return(*target, self)?,
+            Expression::Return(target, expr) => {
+                self.return_value = self.evaluate(&**expr, stack, captured)?;
+                return Err(FreightError::Return { target: *target });
+            }
+        };
+        Ok(result)
+    }
 }

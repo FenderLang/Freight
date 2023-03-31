@@ -1,6 +1,6 @@
 use crate::{
     error::{FreightError, OrReturn},
-    execution_engine::{evaluate, ExecutionEngine},
+    execution_engine::ExecutionEngine,
     expression::Expression,
     TypeSystem,
 };
@@ -34,7 +34,7 @@ impl<TS: TypeSystem> Function<TS> {
         }
 
         for expr in self.expressions.iter().take(self.expressions.len() - 1) {
-            if let Err(FreightError::Return { target }) = evaluate(expr, engine, args, captured) {
+            if let Err(FreightError::Return { target }) = engine.evaluate(expr, args, captured) {
                 if target == self.return_target {
                     return Ok(std::mem::take(&mut engine.return_value));
                 } else {
@@ -42,7 +42,8 @@ impl<TS: TypeSystem> Function<TS> {
                 }
             }
         }
-        evaluate(self.expressions.last().unwrap(), engine, args, captured)
+        engine
+            .evaluate(self.expressions.last().unwrap(), args, captured)
             .or_return(self.return_target, engine)
     }
 }
