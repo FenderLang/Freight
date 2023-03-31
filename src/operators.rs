@@ -15,12 +15,12 @@ pub trait BinaryOperator<V: Value>: Debug + Clone {
     fn apply_2(&self, a: &V, b: &V) -> V;
 }
 
-pub trait Initializer<V: Value>: Debug + Clone {
-    fn initialize(&self, values: Vec<V>) -> V;
+pub trait Initializer<TS: crate::TypeSystem>: Debug + Clone {
+    fn initialize(&self, values: Vec<TS::Value>, ctx: &mut TS::GlobalContext) -> TS::Value;
 }
 
-impl<V: Value> Initializer<V> for () {
-    fn initialize(&self, _: Vec<V>) -> V {
-        V::default()
+impl<TS: crate::TypeSystem> Initializer<TS> for () {
+    fn initialize(&self, _: Vec<TS::Value>, _: &mut TS::GlobalContext) -> TS::Value {
+        TS::Value::default()
     }
 }
