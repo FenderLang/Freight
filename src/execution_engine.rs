@@ -87,10 +87,11 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             args.push(Value::uninitialized_reference());
         }
         let function = self.get_function(func.location);
-        if let FunctionType::CapturingRef(captures) = &func.function_type {
-            function.call(self, &mut args, captures)
-        } else {
-            function.call(self, &mut args, &[])
+        match &func.function_type {
+            FunctionType::CapturingRef(captures) => function.call(self, &mut args, captures),
+            FunctionType::Static => function.call(self, &mut args, &[]),
+            FunctionType::CapturingDef(_) => return Err(FreightError::InvalidInvocationTarget),
+            FunctionType::Native(func) => func(self, args),
         }
     }
 

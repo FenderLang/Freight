@@ -9,6 +9,7 @@ type NativeFuncInnerAlias<TS> = fn(
     Vec<<TS as TypeSystem>::Value>,
 ) -> Result<<TS as TypeSystem>::Value, FreightError>;
 
+#[derive(Clone)]
 pub struct NativeFunction<TS: TypeSystem>(NativeFuncInnerAlias<TS>);
 
 impl<TS: TypeSystem> NativeFunction<TS> {

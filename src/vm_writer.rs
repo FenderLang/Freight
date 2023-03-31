@@ -1,7 +1,6 @@
 use crate::{
     execution_engine::ExecutionEngine,
-    expression::{Expression, NativeFunction},
-    function::{ArgCount, Function, FunctionRef, FunctionWriter},
+    function::{Function, FunctionRef, FunctionWriter},
     TypeSystem,
 };
 
@@ -47,21 +46,6 @@ impl<TS: TypeSystem> VMWriter<TS> {
         let fref = function.to_ref(self.functions.len());
         self.functions.push(function.build(return_target));
         fref
-    }
-
-    /// Create a wrapper for a native function and return a reference to it
-    pub fn include_native_function(
-        &mut self,
-        f: NativeFunction<TS>,
-        args: ArgCount,
-    ) -> FunctionRef<TS> {
-        let mut func = FunctionWriter::new(args);
-        let args = (0..args.stack_size())
-            .map(|n| Expression::stack(n))
-            .collect();
-        func.evaluate_expression(Expression::NativeFunctionCall(f, args));
-        let return_target = self.create_return_target();
-        self.include_function(func, return_target)
     }
 
     /// Build an [ExecutionEngine] with the given function as an entry point
