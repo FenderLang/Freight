@@ -100,12 +100,15 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         for _ in 0..func.variable_count {
             args.push(Value::uninitialized_reference());
         }
+        if let FunctionType::Native(func) = &func.function_type {
+            return func(self, args);
+        }
         let function = self.get_function(func.location);
         match &func.function_type {
             FunctionType::CapturingRef(captures) => function.call(self, &mut args, captures),
             FunctionType::Static => function.call(self, &mut args, &[]),
             FunctionType::CapturingDef(_) => Err(FreightError::InvalidInvocationTarget),
-            FunctionType::Native(func) => func(self, args),
+            FunctionType::Native(_) => unreachable!("Native function already handled"),
         }
     }
 
