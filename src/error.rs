@@ -2,7 +2,7 @@ use std::{error::Error, fmt::Display};
 
 use crate::{execution_engine::ExecutionEngine, TypeSystem};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FreightError {
     InvalidInvocationTarget,
     IncorrectArgumentCount {
