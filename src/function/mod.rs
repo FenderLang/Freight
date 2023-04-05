@@ -42,7 +42,17 @@ impl<TS: TypeSystem> Function<TS> {
                         return Err(FreightError::Return { target });
                     }
                 }
-                Err(e) => return Err(e),
+                Err(FreightError::IncorrectArgumentCount {
+                    expected_min,
+                    expected_max,
+                    actual,
+                }) => {
+                    return Err(FreightError::IncorrectArgumentCount {
+                        expected_min,
+                        expected_max,
+                        actual,
+                    })
+                }
                 _ => (),
             }
         }
