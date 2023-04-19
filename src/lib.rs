@@ -7,6 +7,7 @@ pub mod execution_engine;
 pub mod expression;
 pub mod function;
 pub mod operators;
+pub mod pool;
 pub mod value;
 
 /// Defines the type system for a programming language

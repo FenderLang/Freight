@@ -5,20 +5,21 @@ use crate::{
     expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType, FunctionWriter},
     operators::{BinaryOperator, Initializer, UnaryOperator},
+    pool::{IntoExactSizeIterator, PooledVec, VecPool},
     value::Value,
     TypeSystem,
 };
 use crate::{error::OrReturn, function::Function};
-use std::cell::UnsafeCell;
+use std::cell::{RefCell, UnsafeCell};
 use std::rc::Rc;
 
-#[derive(Debug)]
 pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) num_globals: usize,
     pub(crate) globals: Vec<TS::Value>,
     pub(crate) functions: UnsafeCell<Vec<Function<TS>>>,
     pub(crate) next_return_target: usize,
     pub(crate) return_value: TS::Value,
+    pub vec_pool: Rc<RefCell<VecPool<TS::Value>>>,
     pub context: TS::GlobalContext,
 }
 
@@ -30,6 +31,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             functions: vec![].into(),
             next_return_target: 0,
             return_value: Default::default(),
+            vec_pool: Default::default(),
             context,
         }
     }
@@ -74,10 +76,20 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         self.globals = vec![Value::uninitialized_reference(); self.num_globals];
     }
 
+    #[inline]
     pub fn call(
         &mut self,
         func: &FunctionRef<TS>,
-        mut args: Vec<TS::Value>,
+        args: impl IntoExactSizeIterator<Item = TS::Value>,
+    ) -> Result<TS::Value, FreightError> {
+        let vec = VecPool::from_pool(self.vec_pool.clone(), args);
+        self.call_internal(func, vec)
+    }
+
+    pub fn call_internal(
+        &mut self,
+        func: &FunctionRef<TS>,
+        mut args: PooledVec<TS::Value>,
     ) -> Result<TS::Value, FreightError> {
         if !func.arg_count.valid_arg_count(args.len()) {
             return Err(FreightError::IncorrectArgumentCount {
@@ -136,22 +148,22 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 op.apply_1(&v)
             }
             Expression::StaticFunctionCall(func, args) => {
-                let mut collected = Vec::with_capacity(func.stack_size);
+                let mut collected = VecPool::request(self.vec_pool.clone(), func.stack_size);
                 for arg in args {
                     collected.push(self.evaluate(arg, stack, captured)?.clone().into_ref());
                 }
-                self.call(func, collected)?
+                self.call_internal(func, collected)?
             }
             Expression::DynamicFunctionCall(func, args) => {
                 let func: TS::Value = self.evaluate(func, stack, captured)?;
                 let Some(func): Option<&FunctionRef<TS>> = func.cast_to_function() else {
                 return Err(FreightError::InvalidInvocationTarget);
             };
-                let mut collected = Vec::with_capacity(func.stack_size);
+                let mut collected = VecPool::request(self.vec_pool.clone(), func.stack_size);
                 for arg in args {
                     collected.push(self.evaluate(arg, stack, captured)?.clone().into_ref());
                 }
-                self.call(func, collected)?
+                self.call_internal(func, collected)?
             }
             Expression::FunctionCapture(func) => {
                 let FunctionType::CapturingDef(capture) = &func.function_type else {
@@ -176,7 +188,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 Default::default()
             }
             Expression::NativeFunctionCall(func, args) => {
-                let mut collected = Vec::with_capacity(args.len());
+                let mut collected = VecPool::request(self.vec_pool.clone(), args.len());
                 for arg in args {
                     collected.push(self.evaluate(arg, stack, captured)?.clone());
                 }

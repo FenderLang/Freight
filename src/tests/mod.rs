@@ -36,7 +36,7 @@ fn test_functions() {
     ));
     let main = engine.register_function(main, 0);
     assert_eq!(
-        engine.call(&main, vec![]).unwrap(),
+        engine.call(&main, []).unwrap(),
         TestValueWrapper(TestValue::Number(5))
     );
 }

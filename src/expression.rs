@@ -1,12 +1,13 @@
 use crate::{
-    error::FreightError, execution_engine::ExecutionEngine, function::FunctionRef, TypeSystem,
+    error::FreightError, execution_engine::ExecutionEngine, function::FunctionRef, pool::PooledVec,
+    TypeSystem,
 };
 
 use std::{fmt::Debug, ops::Deref};
 
 type NativeFuncInnerAlias<TS> = fn(
     &mut ExecutionEngine<TS>,
-    Vec<<TS as TypeSystem>::Value>,
+    PooledVec<<TS as TypeSystem>::Value>,
 ) -> Result<<TS as TypeSystem>::Value, FreightError>;
 
 #[derive(Clone)]
