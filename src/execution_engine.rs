@@ -86,7 +86,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         self.call_internal(func, vec)
     }
 
-    pub fn call_internal(
+    pub(crate) fn call_internal(
         &mut self,
         func: &FunctionRef<TS>,
         mut args: PooledVec<TS::Value>,
@@ -124,7 +124,11 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
     }
 
-    pub fn evaluate(
+    pub fn evaluate(&mut self, expr: &Expression<TS>) -> Result<TS::Value, FreightError> {
+        self.evaluate_internal(expr, &mut [], &[])
+    }
+
+    pub(crate) fn evaluate_internal(
         &mut self,
         expr: &Expression<TS>,
         stack: &mut [TS::Value],
@@ -139,29 +143,37 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             },
             Expression::BinaryOpEval(op, operands) => {
                 let [l, r] = &**operands;
-                let l = self.evaluate(l, stack, captured)?;
-                let r = self.evaluate(r, stack, captured)?;
+                let l = self.evaluate_internal(l, stack, captured)?;
+                let r = self.evaluate_internal(r, stack, captured)?;
                 op.apply_2(&l, &r)
             }
             Expression::UnaryOpEval(op, v) => {
-                let v = self.evaluate(v, stack, captured)?;
+                let v = self.evaluate_internal(v, stack, captured)?;
                 op.apply_1(&v)
             }
             Expression::StaticFunctionCall(func, args) => {
                 let mut collected = VecPool::request(self.vec_pool.clone(), func.stack_size);
                 for arg in args {
-                    collected.push(self.evaluate(arg, stack, captured)?.clone().into_ref());
+                    collected.push(
+                        self.evaluate_internal(arg, stack, captured)?
+                            .clone()
+                            .into_ref(),
+                    );
                 }
                 self.call_internal(func, collected)?
             }
             Expression::DynamicFunctionCall(func, args) => {
-                let func: TS::Value = self.evaluate(func, stack, captured)?;
+                let func: TS::Value = self.evaluate_internal(func, stack, captured)?;
                 let Some(func): Option<&FunctionRef<TS>> = func.cast_to_function() else {
                 return Err(FreightError::InvalidInvocationTarget);
             };
                 let mut collected = VecPool::request(self.vec_pool.clone(), func.stack_size);
                 for arg in args {
-                    collected.push(self.evaluate(arg, stack, captured)?.clone().into_ref());
+                    collected.push(
+                        self.evaluate_internal(arg, stack, captured)?
+                            .clone()
+                            .into_ref(),
+                    );
                 }
                 self.call_internal(func, collected)?
             }
@@ -183,41 +195,41 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 func.into()
             }
             Expression::AssignStack(addr, expr) => {
-                let val = self.evaluate(expr, stack, captured)?;
+                let val = self.evaluate_internal(expr, stack, captured)?;
                 stack[*addr].assign(val);
                 Default::default()
             }
             Expression::NativeFunctionCall(func, args) => {
                 let mut collected = VecPool::request(self.vec_pool.clone(), args.len());
                 for arg in args {
-                    collected.push(self.evaluate(arg, stack, captured)?.clone());
+                    collected.push(self.evaluate_internal(arg, stack, captured)?.clone());
                 }
                 func(self, collected)?
             }
             Expression::AssignGlobal(addr, expr) => {
-                let val = self.evaluate(expr, stack, captured)?;
+                let val = self.evaluate_internal(expr, stack, captured)?;
                 self.globals[*addr].assign(val);
                 Default::default()
             }
             Expression::AssignDynamic(args) => {
                 let [target, value] = &**args;
-                let mut target = self.evaluate(target, stack, captured)?.dupe_ref();
-                let value = self.evaluate(value, stack, captured)?;
+                let mut target = self.evaluate_internal(target, stack, captured)?.dupe_ref();
+                let value = self.evaluate_internal(value, stack, captured)?;
                 target.assign(value);
                 Default::default()
             }
             Expression::Initialize(init, args) => {
                 let mut collected = Vec::with_capacity(args.len());
                 for arg in args {
-                    collected.push(self.evaluate(arg, stack, captured)?);
+                    collected.push(self.evaluate_internal(arg, stack, captured)?);
                 }
                 init.initialize(collected, self)
             }
             Expression::ReturnTarget(target, expr) => self
-                .evaluate(&**expr, stack, captured)
+                .evaluate_internal(&**expr, stack, captured)
                 .or_return(*target, self)?,
             Expression::Return(target, expr) => {
-                self.return_value = self.evaluate(&**expr, stack, captured)?;
+                self.return_value = self.evaluate_internal(&**expr, stack, captured)?;
                 return Err(FreightError::Return { target: *target });
             }
         };
