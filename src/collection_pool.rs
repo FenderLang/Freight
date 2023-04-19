@@ -39,6 +39,27 @@ impl<T, C: Poolable<T>> Deref for Pooled<T, C> {
     }
 }
 
+#[derive(Debug)]
+pub struct VecToArrayError {
+    pub expected_size: usize,
+    pub actual_size: usize,
+}
+
+impl<T: Default, const N: usize> TryInto<[T; N]> for PooledVec<T> {
+    type Error = VecToArrayError;
+
+    fn try_into(mut self) -> Result<[T; N], Self::Error> {
+        if N != self.len() {
+            Err(VecToArrayError {
+                expected_size: N,
+                actual_size: self.len(),
+            })
+        } else {
+            Ok(std::array::from_fn(|i| std::mem::take(&mut self[i])))
+        }
+    }
+}
+
 impl<T, C: Poolable<T>> DerefMut for Pooled<T, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.collection
