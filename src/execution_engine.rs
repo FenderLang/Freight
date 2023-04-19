@@ -1,11 +1,11 @@
 #[cfg(feature = "variadic_functions")]
 use crate::function::ArgCount;
 use crate::{
+    collection_pool::{IntoExactSizeIterator, PooledVec, RcSlicePool, VecPool},
     error::FreightError,
     expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType, FunctionWriter},
     operators::{BinaryOperator, Initializer, UnaryOperator},
-    pool::{IntoExactSizeIterator, PooledVec, VecPool},
     value::Value,
     TypeSystem,
 };
@@ -20,6 +20,7 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) next_return_target: usize,
     pub(crate) return_value: TS::Value,
     pub vec_pool: Rc<RefCell<VecPool<TS::Value>>>,
+    pub rc_pool: Rc<RefCell<RcSlicePool<TS::Value>>>,
     pub context: TS::GlobalContext,
 }
 
@@ -33,6 +34,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             return_value: Default::default(),
             vec_pool: Default::default(),
             context,
+            rc_pool: Default::default(),
         }
     }
 
@@ -182,16 +184,16 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 return Err(FreightError::InvalidInvocationTarget);
             };
                 let mut func = func.clone();
-                func.function_type = FunctionType::CapturingRef(
-                    capture
-                        .iter()
-                        .map(|var| match var {
-                            VariableType::Captured(addr) => captured[*addr].dupe_ref(),
-                            VariableType::Stack(addr) => stack[*addr].dupe_ref(),
-                            VariableType::Global(addr) => self.globals[*addr].dupe_ref(),
-                        })
-                        .collect::<Rc<[_]>>(),
-                );
+                let captures_iter = capture.iter().map(|var| match var {
+                    VariableType::Captured(addr) => captured[*addr].dupe_ref(),
+                    VariableType::Stack(addr) => stack[*addr].dupe_ref(),
+                    VariableType::Global(addr) => self.globals[*addr].dupe_ref(),
+                });
+
+                func.function_type = FunctionType::CapturingRef(RcSlicePool::from_pool(
+                    self.rc_pool.clone(),
+                    captures_iter,
+                ));
                 func.into()
             }
             Expression::AssignStack(addr, expr) => {

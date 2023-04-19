@@ -1,7 +1,7 @@
+use crate::collection_pool::PooledRcSlice;
 use crate::expression::{NativeFunction, VariableType};
 use crate::TypeSystem;
 use std::fmt::Debug;
-use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 pub enum FunctionType<TS: TypeSystem> {
@@ -10,7 +10,7 @@ pub enum FunctionType<TS: TypeSystem> {
     /// Reference to a function which captures values, but hasn't been initialized with those values.
     CapturingDef(Vec<VariableType>),
     /// Reference to a function which captures values bundled with those captured values
-    CapturingRef(Rc<[TS::Value]>),
+    CapturingRef(PooledRcSlice<TS::Value>),
     /// Reference to a native function
     Native(NativeFunction<TS>),
 }

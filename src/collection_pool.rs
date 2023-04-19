@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    fmt::Debug,
     marker::PhantomData,
     ops::{Deref, DerefMut},
     rc::Rc,
@@ -7,6 +8,8 @@ use std::{
 
 pub type PooledVec<T> = Pooled<T, Vec<T>>;
 pub type VecPool<T> = CollectionPool<T, Vec<T>>;
+pub type PooledRcSlice<T> = Pooled<T, Rc<[T]>>;
+pub type RcSlicePool<T> = CollectionPool<T, Rc<[T]>>;
 
 pub struct CollectionPool<T, C: Poolable<T>> {
     pool: Vec<Vec<C>>,
@@ -17,6 +20,15 @@ pub struct CollectionPool<T, C: Poolable<T>> {
 pub struct Pooled<T, C: Poolable<T>> {
     pool: Rc<RefCell<CollectionPool<T, C>>>,
     collection: C,
+}
+
+impl<T, C: Poolable<T> + Clone> Clone for Pooled<T, C> {
+    fn clone(&self) -> Self {
+        Pooled {
+            pool: self.pool.clone(),
+            collection: self.collection.clone(),
+        }
+    }
 }
 
 impl<T, C: Poolable<T>> Deref for Pooled<T, C> {
@@ -42,7 +54,7 @@ impl<T, C: Poolable<T>> Drop for Pooled<T, C> {
 pub trait Poolable<T>: Sized {
     fn into_pool(&mut self, pool: &mut CollectionPool<T, Self>);
     fn with_capacity(capacity: usize) -> Self;
-    fn populate(&mut self, elems: impl IntoIterator<Item = T>);
+    fn populate(&mut self, next: impl FnMut() -> T);
     fn capacity(&self) -> usize;
 }
 
@@ -51,9 +63,11 @@ impl<T> Poolable<T> for Vec<T> {
         pool.insert(std::mem::take(self));
     }
 
-    fn populate(&mut self, elems: impl IntoIterator<Item = T>) {
+    fn populate(&mut self, mut next: impl FnMut() -> T) {
         self.clear();
-        self.extend(elems);
+        for _ in 0..self.capacity() {
+            self.push(next());
+        }
     }
 
     fn capacity(&self) -> usize {
@@ -82,10 +96,10 @@ impl<T: Default> Poolable<T> for Rc<[T]> {
         empty_init.into()
     }
 
-    fn populate(&mut self, elems: impl IntoIterator<Item = T>) {
+    fn populate(&mut self, mut next: impl FnMut() -> T) {
         let slice = Rc::get_mut(self).expect("Non-unique rc slice in pool");
-        for (i, elem) in elems.into_iter().enumerate() {
-            slice[i] = elem;
+        for i in 0..slice.len() {
+            slice[i] = next();
         }
     }
 
@@ -108,6 +122,12 @@ where
 
     fn into_exact_size_iter(self) -> Self::ExactSizeIter {
         self.into_iter()
+    }
+}
+
+impl<T, C: Poolable<T> + Debug> Debug for Pooled<T, C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.collection.fmt(f)
     }
 }
 
@@ -151,10 +171,20 @@ impl<T, C: Poolable<T>> CollectionPool<T, C> {
         cell: Rc<RefCell<Self>>,
         elems: impl IntoExactSizeIterator<Item = T>,
     ) -> Pooled<T, C> {
-        let iter = elems.into_exact_size_iter();
+        let mut iter = elems.into_exact_size_iter();
         let capacity = iter.len();
         let mut container = Self::request(cell, capacity);
-        container.collection.populate(iter);
+        container.collection.populate(|| iter.next().unwrap());
+        container
+    }
+
+    pub fn from_pool_with_fn(
+        cell: Rc<RefCell<Self>>,
+        capacity: usize,
+        f: impl FnMut() -> T,
+    ) -> Pooled<T, C> {
+        let mut container = Self::request(cell, capacity);
+        container.populate(f);
         container
     }
 }

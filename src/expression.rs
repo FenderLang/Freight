@@ -1,6 +1,6 @@
 use crate::{
-    error::FreightError, execution_engine::ExecutionEngine, function::FunctionRef, pool::PooledVec,
-    TypeSystem,
+    collection_pool::PooledVec, error::FreightError, execution_engine::ExecutionEngine,
+    function::FunctionRef, TypeSystem,
 };
 
 use std::{fmt::Debug, ops::Deref};
