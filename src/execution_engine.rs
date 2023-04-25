@@ -109,9 +109,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         let mut arg_num = 0;
         let max = func.arg_count.max_capped().min(arg_count);
         while arg_num < max {
-            stack[arg_num] = args(self)?;
+            stack[arg_num] = args(self)?.clone().into_ref();
             arg_num += 1;
         }
+        stack[arg_num..].fill_with(Value::uninitialized_reference);
 
         #[cfg(feature = "variadic_functions")]
         if let ArgCount::Variadic { .. } = func.arg_count {
@@ -121,11 +122,9 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 vargs.push(args(self)?);
                 index += 1;
             }
-            stack[arg_num] = Value::gen_list(vargs);
-            arg_num += 1;
+            stack[func.arg_count.max_capped()] = Value::gen_list(vargs);
         }
 
-        stack[arg_num..].fill_with(Value::uninitialized_reference);
         if let FunctionType::Native(func) = &func.function_type {
             return func(self, stack);
         }
