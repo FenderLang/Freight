@@ -114,7 +114,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
 
         #[cfg(feature = "variadic_functions")]
-        if let ArgCount::Variadic { min: _, max } = func.arg_count {
+        if let ArgCount::Variadic { .. } = func.arg_count {
             let mut vargs = Vec::new();
             let mut index = arg_num;
             while index < arg_count {
