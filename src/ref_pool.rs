@@ -63,10 +63,7 @@ impl<T: PoolableRef> RefPool<T> {
     }
 
     pub fn request(cell: Rc<RefCell<Self>>) -> PooledRef<T> {
-        let val = cell
-            .borrow_mut()
-            .pool
-            .pop_back().unwrap_or_default();
+        let val = cell.borrow_mut().pool.pop_back().unwrap_or_default();
         PooledRef { val, pool: cell }
     }
 
