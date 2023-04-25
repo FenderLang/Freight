@@ -103,7 +103,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             return Err(FreightError::IncorrectArgumentCount {
                 expected_min: func.arg_count.min(),
                 expected_max: func.arg_count.max(),
-                actual: stack.len(),
+                actual: arg_count,
             });
         }
         let mut arg_num = 0;
