@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    collections::VecDeque,
     fmt::Debug,
     marker::PhantomData,
     ops::{Deref, DerefMut},
@@ -7,18 +8,20 @@ use std::{
 };
 
 pub type PooledVec<T> = Pooled<T, Vec<T>>;
-pub type VecPool<T> = CollectionPool<T, Vec<T>>;
+pub type VecPool<T> = SlicePool<T, Vec<T>>;
 pub type PooledRcSlice<T> = Pooled<T, Rc<[T]>>;
-pub type RcSlicePool<T> = CollectionPool<T, Rc<[T]>>;
+pub type RcSlicePool<T> = SlicePool<T, Rc<[T]>>;
+pub type PooledBoxSlice<T> = Pooled<T, Box<[T]>>;
+pub type BoxSlicePool<T> = SlicePool<T, Box<[T]>>;
 
-pub struct CollectionPool<T, C: Poolable<T>> {
-    pool: Vec<Vec<C>>,
+pub struct SlicePool<T, C: Poolable<T>> {
+    pool: Vec<VecDeque<C>>,
     elem_type: PhantomData<T>,
     max_cache_per: usize,
 }
 
 pub struct Pooled<T, C: Poolable<T>> {
-    pool: Rc<RefCell<CollectionPool<T, C>>>,
+    pool: Rc<RefCell<SlicePool<T, C>>>,
     collection: C,
 }
 
@@ -45,7 +48,9 @@ pub struct VecToArrayError {
     pub actual_size: usize,
 }
 
-impl<T: Default, const N: usize> TryInto<[T; N]> for PooledVec<T> {
+impl<T: Default, C: Poolable<T> + DerefMut<Target = [T]>, const N: usize> TryInto<[T; N]>
+    for Pooled<T, C>
+{
     type Error = VecToArrayError;
 
     fn try_into(mut self) -> Result<[T; N], Self::Error> {
@@ -73,35 +78,14 @@ impl<T, C: Poolable<T>> Drop for Pooled<T, C> {
 }
 
 pub trait Poolable<T>: Sized {
-    fn into_pool(&mut self, pool: &mut CollectionPool<T, Self>);
+    fn into_pool(&mut self, pool: &mut SlicePool<T, Self>);
     fn with_capacity(capacity: usize) -> Self;
-    fn populate(&mut self, next: impl FnMut() -> T);
+    fn populate(&mut self, next: impl FnMut() -> T, len: usize);
     fn capacity(&self) -> usize;
 }
 
-impl<T> Poolable<T> for Vec<T> {
-    fn into_pool(&mut self, pool: &mut CollectionPool<T, Vec<T>>) {
-        pool.insert(std::mem::take(self));
-    }
-
-    fn populate(&mut self, mut next: impl FnMut() -> T) {
-        self.clear();
-        for _ in 0..self.capacity() {
-            self.push(next());
-        }
-    }
-
-    fn capacity(&self) -> usize {
-        self.capacity()
-    }
-
-    fn with_capacity(capacity: usize) -> Self {
-        Vec::with_capacity(capacity)
-    }
-}
-
 impl<T: Default> Poolable<T> for Rc<[T]> {
-    fn into_pool(&mut self, pool: &mut CollectionPool<T, Self>) {
+    fn into_pool(&mut self, pool: &mut SlicePool<T, Self>) {
         if Rc::strong_count(self) + Rc::weak_count(self) != 1 {
             return;
         }
@@ -117,11 +101,33 @@ impl<T: Default> Poolable<T> for Rc<[T]> {
         empty_init.into()
     }
 
-    fn populate(&mut self, mut next: impl FnMut() -> T) {
+    fn populate(&mut self, mut next: impl FnMut() -> T, len: usize) {
         let slice = Rc::get_mut(self).expect("Non-unique rc slice in pool");
-        for i in 0..slice.len() {
+        for i in 0..len {
             slice[i] = next();
         }
+    }
+
+    fn capacity(&self) -> usize {
+        self.len()
+    }
+}
+
+impl<T: Default> Poolable<T> for Box<[T]> {
+    fn into_pool(&mut self, pool: &mut SlicePool<T, Self>) {
+        pool.insert(std::mem::take(self));
+    }
+
+    fn with_capacity(capacity: usize) -> Self {
+        let mut vec = Vec::with_capacity(capacity);
+        for _ in 0..capacity {
+            vec.push(Default::default());
+        }
+        vec.into()
+    }
+
+    fn populate(&mut self, next: impl FnMut() -> T, _len: usize) {
+        self.fill_with(next);
     }
 
     fn capacity(&self) -> usize {
@@ -152,16 +158,17 @@ impl<T, C: Poolable<T> + Debug> Debug for Pooled<T, C> {
     }
 }
 
-impl<T, C: Poolable<T>> Default for CollectionPool<T, C> {
+impl<T, C: Poolable<T>> Default for SlicePool<T, C> {
     fn default() -> Self {
         Self::with_max_cache_per(1000)
     }
 }
 
-impl<T, C: Poolable<T>> CollectionPool<T, C> {
+impl<T, C: Poolable<T>> SlicePool<T, C> {
     pub fn with_max_cache_per(max_cache_per: usize) -> Self {
-        CollectionPool {
-            pool: std::array::from_fn::<_, 100, _>(|_| Vec::with_capacity(max_cache_per)).into(),
+        SlicePool {
+            pool: std::array::from_fn::<_, 100, _>(|_| VecDeque::with_capacity(max_cache_per))
+                .into(),
             elem_type: PhantomData,
             max_cache_per,
         }
@@ -170,7 +177,7 @@ impl<T, C: Poolable<T>> CollectionPool<T, C> {
     pub fn insert(&mut self, container: C) {
         self.pool.get_mut(container.capacity()).map(|v| {
             if v.len() < self.max_cache_per {
-                v.push(container);
+                v.push_back(container);
             }
         });
     }
@@ -180,7 +187,7 @@ impl<T, C: Poolable<T>> CollectionPool<T, C> {
         let collection = this
             .pool
             .get_mut(capacity)
-            .and_then(|cache| cache.pop())
+            .and_then(|cache| cache.pop_back())
             .unwrap_or_else(|| C::with_capacity(capacity));
         Pooled {
             pool: cell.clone(),
@@ -195,7 +202,9 @@ impl<T, C: Poolable<T>> CollectionPool<T, C> {
         let mut iter = elems.into_exact_size_iter();
         let capacity = iter.len();
         let mut container = Self::request(cell, capacity);
-        container.collection.populate(|| iter.next().unwrap());
+        container
+            .collection
+            .populate(|| iter.next().unwrap(), capacity);
         container
     }
 
@@ -205,7 +214,7 @@ impl<T, C: Poolable<T>> CollectionPool<T, C> {
         f: impl FnMut() -> T,
     ) -> Pooled<T, C> {
         let mut container = Self::request(cell, capacity);
-        container.populate(f);
+        container.populate(f, capacity);
         container
     }
 }

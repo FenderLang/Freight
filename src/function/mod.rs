@@ -33,7 +33,8 @@ impl<TS: TypeSystem> Function<TS> {
             return Ok(Default::default());
         }
 
-        for expr in self.expressions.iter().take(self.expressions.len() - 1) {
+        for i in 0..self.expressions.len() - 1 {
+            let expr = &self.expressions[i];
             match engine.evaluate_internal(expr, args, captured) {
                 Err(FreightError::Return { target }) => {
                     if target == self.return_target {

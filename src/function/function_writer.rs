@@ -31,7 +31,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
             args,
             variable_count: 0,
             expressions: vec![],
-            function_type: FunctionType::CapturingDef(capture),
+            function_type: FunctionType::CapturingDef(capture.into()),
         }
     }
 
@@ -47,7 +47,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
 
     /// Convert this into a capturing function which will capture the specified values from its environment
     pub fn set_captures(&mut self, capture: Vec<VariableType>) {
-        self.function_type = FunctionType::CapturingDef(capture);
+        self.function_type = FunctionType::CapturingDef(capture.into());
     }
 
     /// Create a new variable in the scope of this function and return its address

@@ -27,5 +27,5 @@ pub trait Value: Clone + Default + Debug + From<FunctionRef<Self::TS>> + Partial
 
     #[cfg(feature = "variadic_functions")]
     /// Create a `Value` type list out of `Vec` of `Value`
-    fn gen_list(values: Vec<Self>) -> Self;
+    fn gen_list(values: impl IntoIterator<Item = Self>) -> Self;
 }

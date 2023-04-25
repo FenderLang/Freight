@@ -27,7 +27,7 @@ impl<TS: TypeSystem> FunctionRef<TS> {
         Self {
             arg_count,
             location: id,
-            stack_size: 0,
+            stack_size: arg_count.stack_size(),
             variable_count: 0,
             function_type: FunctionType::Native(func),
         }
