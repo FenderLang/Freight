@@ -8,7 +8,6 @@ use std::{
 };
 
 pub type PooledVec<T> = Pooled<T, Vec<T>>;
-pub type VecPool<T> = SlicePool<T, Vec<T>>;
 pub type PooledRcSlice<T> = Pooled<T, Rc<[T]>>;
 pub type RcSlicePool<T> = SlicePool<T, Rc<[T]>>;
 pub type PooledBoxSlice<T> = Pooled<T, Box<[T]>>;

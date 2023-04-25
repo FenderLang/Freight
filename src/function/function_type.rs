@@ -1,5 +1,5 @@
-use crate::collection_pool::PooledRcSlice;
 use crate::expression::{NativeFunction, VariableType};
+use crate::slice_pool::PooledRcSlice;
 use crate::TypeSystem;
 use std::fmt::Debug;
 use std::rc::Rc;

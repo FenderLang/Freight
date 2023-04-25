@@ -1,11 +1,11 @@
 #[cfg(feature = "variadic_functions")]
 use crate::function::ArgCount;
 use crate::{
-    collection_pool::{BoxSlicePool, IntoExactSizeIterator, PooledBoxSlice, RcSlicePool},
     error::FreightError,
     expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType, FunctionWriter},
     operators::{BinaryOperator, Initializer, UnaryOperator},
+    slice_pool::{BoxSlicePool, IntoExactSizeIterator, PooledBoxSlice, RcSlicePool},
     value::Value,
     TypeSystem,
 };
