@@ -94,8 +94,8 @@ impl Value for TestValueWrapper {
     }
 
     #[cfg(feature = "variadic_functions")]
-    fn gen_list(values: Vec<Self>) -> Self {
-        TestValueWrapper(TestValue::List(values))
+    fn gen_list(values: impl IntoIterator<Item = Self>) -> Self {
+        TestValueWrapper(TestValue::List(values.into_iter().collect()))
     }
 }
 
