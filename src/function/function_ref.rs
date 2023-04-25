@@ -7,7 +7,6 @@ pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) arg_count: ArgCount,
     pub(crate) stack_size: usize,
     pub(crate) location: usize,
-    pub(crate) variable_count: usize,
     pub function_type: FunctionType<TS>,
 }
 
@@ -28,7 +27,6 @@ impl<TS: TypeSystem> FunctionRef<TS> {
             arg_count,
             location: id,
             stack_size: arg_count.stack_size(),
-            variable_count: 0,
             function_type: FunctionType::Native(func),
         }
     }

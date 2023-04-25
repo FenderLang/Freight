@@ -39,7 +39,6 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
         FunctionRef {
             arg_count: self.args,
             stack_size: self.args.stack_size() + self.variable_count,
-            variable_count: self.variable_count,
             location,
             function_type: self.function_type.clone(),
         }

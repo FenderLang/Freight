@@ -66,8 +66,7 @@ impl<T: PoolableRef> RefPool<T> {
         let val = cell
             .borrow_mut()
             .pool
-            .pop_back()
-            .unwrap_or_else(Default::default);
+            .pop_back().unwrap_or_default();
         PooledRef { val, pool: cell }
     }
 

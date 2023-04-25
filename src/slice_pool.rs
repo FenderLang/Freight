@@ -72,19 +72,19 @@ impl<T, C: Poolable<T>> DerefMut for Pooled<T, C> {
 
 impl<T, C: Poolable<T>> Drop for Pooled<T, C> {
     fn drop(&mut self) {
-        self.collection.into_pool(&mut *self.pool.borrow_mut());
+        self.collection.insert_to_pool(&mut *self.pool.borrow_mut());
     }
 }
 
 pub trait Poolable<T>: Sized {
-    fn into_pool(&mut self, pool: &mut SlicePool<T, Self>);
+    fn insert_to_pool(&mut self, pool: &mut SlicePool<T, Self>);
     fn with_capacity(capacity: usize) -> Self;
     fn populate(&mut self, next: impl FnMut() -> T, len: usize);
     fn capacity(&self) -> usize;
 }
 
 impl<T: Default> Poolable<T> for Rc<[T]> {
-    fn into_pool(&mut self, pool: &mut SlicePool<T, Self>) {
+    fn insert_to_pool(&mut self, pool: &mut SlicePool<T, Self>) {
         if Rc::strong_count(self) + Rc::weak_count(self) != 1 {
             return;
         }
@@ -102,8 +102,8 @@ impl<T: Default> Poolable<T> for Rc<[T]> {
 
     fn populate(&mut self, mut next: impl FnMut() -> T, len: usize) {
         let slice = Rc::get_mut(self).expect("Non-unique rc slice in pool");
-        for i in 0..len {
-            slice[i] = next();
+        for item in slice.iter_mut().take(len) {
+            *item = next();
         }
     }
 
@@ -113,7 +113,7 @@ impl<T: Default> Poolable<T> for Rc<[T]> {
 }
 
 impl<T: Default> Poolable<T> for Box<[T]> {
-    fn into_pool(&mut self, pool: &mut SlicePool<T, Self>) {
+    fn insert_to_pool(&mut self, pool: &mut SlicePool<T, Self>) {
         pool.insert(std::mem::take(self));
     }
 
@@ -174,11 +174,11 @@ impl<T, C: Poolable<T>> SlicePool<T, C> {
     }
 
     pub fn insert(&mut self, container: C) {
-        self.pool.get_mut(container.capacity()).map(|v| {
+        if let Some(v) = self.pool.get_mut(container.capacity()) {
             if v.len() < self.max_cache_per {
                 v.push_back(container);
             }
-        });
+        }
     }
 
     pub fn request(cell: Rc<RefCell<Self>>, capacity: usize) -> Pooled<T, C> {

@@ -167,7 +167,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             }
             Expression::StaticFunctionCall(func, args) => {
                 let new_stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
-                let mut args = args.into_iter();
+                let mut args = args.iter();
                 let arg_count = args.len();
                 self.call_internal(
                     func,
@@ -182,7 +182,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                     return Err(FreightError::InvalidInvocationTarget);
                 };
                 let new_stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
-                let mut iter = args.into_iter();
+                let mut iter = args.iter();
                 let arg_count = iter.len();
                 self.call_internal(
                     func,
@@ -215,10 +215,8 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             }
             Expression::NativeFunctionCall(func, args) => {
                 let mut collected = BoxSlicePool::request(self.box_pool.clone(), args.len());
-                let mut i = 0;
-                for arg in args {
+                for (i, arg) in args.iter().enumerate() {
                     collected[i] = self.evaluate_internal(arg, stack, captured)?.clone();
-                    i += 1;
                 }
                 func(self, collected)?
             }
