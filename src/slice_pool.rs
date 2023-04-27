@@ -190,7 +190,7 @@ impl<T, C: Poolable<T>> SlicePool<T, C> {
             .and_then(|cache| cache.pop_back())
             .unwrap_or_else(|| C::with_capacity(capacity));
         Pooled {
-            pool: cell.clone(),
+            pool: cell,
             collection,
         }
     }
