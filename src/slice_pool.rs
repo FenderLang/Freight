@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    cell::UnsafeCell,
     collections::VecDeque,
     fmt::Debug,
     marker::PhantomData,
@@ -20,7 +20,7 @@ pub struct SlicePool<T, C: Poolable<T>> {
 }
 
 pub struct Pooled<T, C: Poolable<T>> {
-    pool: Rc<RefCell<SlicePool<T, C>>>,
+    pool: Rc<UnsafeCell<SlicePool<T, C>>>,
     collection: C,
 }
 
@@ -72,7 +72,8 @@ impl<T, C: Poolable<T>> DerefMut for Pooled<T, C> {
 
 impl<T, C: Poolable<T>> Drop for Pooled<T, C> {
     fn drop(&mut self) {
-        self.collection.insert_to_pool(&mut *self.pool.borrow_mut());
+        self.collection
+            .insert_to_pool(unsafe { &mut *self.pool.get() });
     }
 }
 
@@ -181,8 +182,8 @@ impl<T, C: Poolable<T>> SlicePool<T, C> {
         }
     }
 
-    pub fn request(cell: Rc<RefCell<Self>>, capacity: usize) -> Pooled<T, C> {
-        let mut this = cell.borrow_mut();
+    pub fn request(cell: Rc<UnsafeCell<Self>>, capacity: usize) -> Pooled<T, C> {
+        let this = unsafe { &mut *cell.get() };
         let collection = this
             .pool
             .get_mut(capacity)
@@ -195,7 +196,7 @@ impl<T, C: Poolable<T>> SlicePool<T, C> {
     }
 
     pub fn from_pool(
-        cell: Rc<RefCell<Self>>,
+        cell: Rc<UnsafeCell<Self>>,
         elems: impl IntoExactSizeIterator<Item = T>,
     ) -> Pooled<T, C> {
         let mut iter = elems.into_exact_size_iter();
@@ -208,7 +209,7 @@ impl<T, C: Poolable<T>> SlicePool<T, C> {
     }
 
     pub fn from_pool_with_fn(
-        cell: Rc<RefCell<Self>>,
+        cell: Rc<UnsafeCell<Self>>,
         capacity: usize,
         f: impl FnMut() -> T,
     ) -> Pooled<T, C> {

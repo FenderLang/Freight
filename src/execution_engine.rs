@@ -10,7 +10,7 @@ use crate::{
     TypeSystem,
 };
 use crate::{error::OrReturn, function::Function};
-use std::cell::{RefCell, UnsafeCell};
+use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 pub type Stack<T> = PooledBoxSlice<T>;
@@ -21,8 +21,8 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) functions: UnsafeCell<Vec<Function<TS>>>,
     pub(crate) next_return_target: usize,
     pub(crate) return_value: TS::Value,
-    pub box_pool: Rc<RefCell<BoxSlicePool<TS::Value>>>,
-    pub rc_pool: Rc<RefCell<RcSlicePool<TS::Value>>>,
+    pub box_pool: Rc<UnsafeCell<BoxSlicePool<TS::Value>>>,
+    pub rc_pool: Rc<UnsafeCell<RcSlicePool<TS::Value>>>,
     pub context: TS::GlobalContext,
 }
 
@@ -109,7 +109,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         let mut arg_num = 0;
         let max = func.arg_count.max_capped().min(arg_count);
         while arg_num < max {
-            stack[arg_num] = args(self)?.clone().into_ref();
+            stack[arg_num] = args(self)?;
             arg_num += 1;
         }
         stack[arg_num..].fill_with(Value::uninitialized_reference);
@@ -127,6 +127,9 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
 
         if let FunctionType::Native(func) = &func.function_type {
             return func(self, stack);
+        }
+        for val in stack[0..max].iter_mut() {
+            *val = val.clone().into_ref();
         }
         let function = self.get_function(func.location);
         match &func.function_type {
