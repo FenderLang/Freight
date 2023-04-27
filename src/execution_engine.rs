@@ -116,11 +116,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
 
         #[cfg(feature = "variadic_functions")]
         if let ArgCount::Variadic { .. } = func.arg_count {
-            let mut vargs = Vec::new();
+            let mut vargs = Vec::with_capacity(arg_count - arg_num);
             let mut index = arg_num;
-            while index < arg_count {
+            for _ in arg_num..arg_count {
                 vargs.push(args(self)?);
-                index += 1;
             }
             stack[func.arg_count.max_capped()] = Value::gen_list(vargs);
         }
