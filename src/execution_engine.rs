@@ -86,10 +86,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         args: impl IntoExactSizeIterator<Item = TS::Value>,
     ) -> Result<TS::Value, FreightError> {
-        let vec = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
+        let stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
         let mut iter = args.into_exact_size_iter();
         let arg_count = iter.len();
-        self.call_internal(func, vec, |_| Ok(iter.next().unwrap()), arg_count)
+        self.call_internal(func, stack, |_| Ok(iter.next().unwrap()), arg_count)
     }
 
     pub(crate) fn call_internal(
@@ -138,6 +138,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
     }
 
+    #[inline]
     pub fn evaluate(&mut self, expr: &Expression<TS>) -> Result<TS::Value, FreightError> {
         self.evaluate_internal(expr, &mut [], &[])
     }

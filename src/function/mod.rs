@@ -34,8 +34,7 @@ impl<TS: TypeSystem> Function<TS> {
         }
 
         for i in 0..self.expressions.len() - 1 {
-            let expr = &self.expressions[i];
-            match engine.evaluate_internal(expr, args, captured) {
+            match engine.evaluate_internal(&self.expressions[i], args, captured) {
                 Err(FreightError::Return { target }) => {
                     if target == self.return_target {
                         return Ok(std::mem::take(&mut engine.return_value));
