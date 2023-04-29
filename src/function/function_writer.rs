@@ -3,7 +3,7 @@ use crate::{expression::Expression, TypeSystem};
 use std::fmt::Debug;
 
 use super::arg_count::ArgCount;
-use super::{Function, FunctionRef, FunctionType};
+use super::{Function, FunctionRef, FunctionType, StackLayout};
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
@@ -11,6 +11,7 @@ pub struct FunctionWriter<TS: TypeSystem> {
     pub(crate) args: ArgCount,
     pub(crate) expressions: Vec<Expression<TS>>,
     pub(crate) function_type: FunctionType<TS>,
+    pub layout: StackLayout,
 }
 
 impl<TS: TypeSystem> FunctionWriter<TS> {
@@ -20,6 +21,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
             variable_count: 0,
             expressions: vec![],
             function_type: FunctionType::Static,
+            layout: StackLayout::all_alloc(),
         }
     }
 
@@ -32,6 +34,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
             variable_count: 0,
             expressions: vec![],
             function_type: FunctionType::CapturingDef(capture.into()),
+            layout: StackLayout::all_alloc(),
         }
     }
 
@@ -41,6 +44,7 @@ impl<TS: TypeSystem> FunctionWriter<TS> {
             stack_size: self.args.stack_size() + self.variable_count,
             location,
             function_type: self.function_type.clone(),
+            layout: self.layout.clone(),
         }
     }
 

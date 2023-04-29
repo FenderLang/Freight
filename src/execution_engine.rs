@@ -112,7 +112,13 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             stack[arg_num] = args(self)?;
             arg_num += 1;
         }
-        stack[arg_num..].fill_with(Value::uninitialized_reference);
+        for (i, arg) in (arg_num..).zip(stack[arg_num..].iter_mut()) {
+            if func.layout.is_alloc(i) {
+                *arg = Value::uninitialized_reference();
+            } else {
+                *arg = Default::default();
+            }
+        }
 
         #[cfg(feature = "variadic_functions")]
         if let ArgCount::Variadic { .. } = func.arg_count {
@@ -126,8 +132,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         if let FunctionType::Native(func) = &func.function_type {
             return func(self, stack);
         }
-        for val in stack[0..max].iter_mut() {
-            *val = val.clone().into_ref();
+        for (i, val) in stack[0..max].iter_mut().enumerate() {
+            if func.layout.is_alloc(i) {
+                *val = val.clone().into_ref();
+            }
         }
         let function = self.get_function(func.location);
         match &func.function_type {
