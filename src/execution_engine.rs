@@ -109,7 +109,13 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         let mut arg_num = 0;
         let max = func.arg_count.max_capped().min(arg_count);
         while arg_num < max {
-            stack[arg_num] = args(self)?.clone();
+            let mut value = args(self)?;
+            if func.layout.is_alloc(arg_num) {
+                value = value.into_ref();
+            } else {
+                value = value.clone();
+            }
+            stack[arg_num] = value;
             arg_num += 1;
         }
         for (i, arg) in (arg_num..).zip(stack[arg_num..].iter_mut()) {
@@ -131,11 +137,6 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
 
         if let FunctionType::Native(func) = &func.function_type {
             return func(self, stack);
-        }
-        for (i, val) in stack[0..max].iter_mut().enumerate() {
-            if func.layout.is_alloc(i) {
-                *val = val.as_ref();
-            }
         }
         let function = self.get_function(func.location);
         match &func.function_type {
