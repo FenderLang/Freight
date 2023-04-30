@@ -135,6 +135,8 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         for (i, val) in stack[0..max].iter_mut().enumerate() {
             if func.layout.is_alloc(i) {
                 *val = val.clone().into_ref();
+            } else {
+                *val = val.clone();
             }
         }
         let function = self.get_function(func.location);
