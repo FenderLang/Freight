@@ -89,8 +89,8 @@ impl Value for TestValueWrapper {
         self.0 = value.0;
     }
 
-    fn into_ref(self) -> Self {
-        self
+    fn as_ref(&self) -> Self {
+        self.clone()
     }
 
     #[cfg(feature = "variadic_functions")]

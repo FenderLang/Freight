@@ -109,7 +109,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         let mut arg_num = 0;
         let max = func.arg_count.max_capped().min(arg_count);
         while arg_num < max {
-            stack[arg_num] = args(self)?;
+            stack[arg_num] = args(self)?.clone();
             arg_num += 1;
         }
         for (i, arg) in (arg_num..).zip(stack[arg_num..].iter_mut()) {
@@ -134,9 +134,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
         for (i, val) in stack[0..max].iter_mut().enumerate() {
             if func.layout.is_alloc(i) {
-                *val = val.clone().into_ref();
-            } else {
-                *val = val.clone();
+                *val = val.as_ref();
             }
         }
         let function = self.get_function(func.location);
