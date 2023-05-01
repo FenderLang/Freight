@@ -18,7 +18,7 @@ impl<T: Default> StackPool<T> {
         }
 
         unsafe {
-            let ptr = self.stack.as_mut_ptr().offset(self.base as isize);
+            let ptr = self.stack.as_mut_ptr().add(self.base);
 
             self.base += capacity;
             let slice = std::slice::from_raw_parts_mut(ptr, capacity);
