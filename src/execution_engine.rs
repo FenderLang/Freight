@@ -143,7 +143,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             return value;
         }
         let function = self.get_function(func.location);
-        
+
         match &func.function_type {
             FunctionType::CapturingRef(captures) => function.call(self, &mut stack, captures),
             FunctionType::Static => function.call(self, &mut stack, &[]),
@@ -229,7 +229,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 for (i, arg) in args.iter().enumerate() {
                     collected[i] = self.evaluate_internal(arg, stack, captured)?.clone();
                 }
-                
+
                 func(self, &mut collected)?
             }
             Expression::AssignGlobal(addr, expr) => {
