@@ -25,7 +25,7 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) functions: UnsafeCell<Vec<Function<TS>>>,
     pub(crate) next_return_target: usize,
     pub(crate) return_value: TS::Value,
-    pub stack: StackPool<TS::Value>,
+    pub stack: Rc<UnsafeCell<StackPool<TS::Value>>>,
     pub rc_pool: Rc<UnsafeCell<RcSlicePool<TS::Value>>>,
     pub context: TS::GlobalContext,
 }
@@ -101,7 +101,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         mut args: impl FnMut(&mut ExecutionEngine<TS>) -> Result<TS::Value, FreightError>,
         arg_count: usize,
     ) -> Result<TS::Value, FreightError> {
-        let stack = self.stack.request(func.stack_size);
+        let mut stack = StackPool::request(self.stack.clone(), func.stack_size);
         if !func.arg_count.valid_arg_count(arg_count) {
             return Err(FreightError::IncorrectArgumentCount {
                 expected_min: func.arg_count.min(),
@@ -139,18 +139,16 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
 
         if let FunctionType::Native(func) = &func.function_type {
-            let value = func(self, stack);
-            self.stack.release(stack.len());
+            let value = func(self, &mut stack);
             return value;
         }
         let function = self.get_function(func.location);
         let value = match &func.function_type {
-            FunctionType::CapturingRef(captures) => function.call(self, stack, captures),
-            FunctionType::Static => function.call(self, stack, &[]),
+            FunctionType::CapturingRef(captures) => function.call(self, &mut stack, captures),
+            FunctionType::Static => function.call(self, &mut stack, &[]),
             FunctionType::CapturingDef(_) => Err(FreightError::InvalidInvocationTarget),
             FunctionType::Native(_) => unreachable!("Native function already handled"),
         };
-        self.stack.release(stack.len());
         value
     }
 
@@ -227,12 +225,11 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 Default::default()
             }
             Expression::NativeFunctionCall(func, args) => {
-                let collected = self.stack.request(args.len());
+                let mut collected = StackPool::request(self.stack.clone(), args.len());
                 for (i, arg) in args.iter().enumerate() {
                     collected[i] = self.evaluate_internal(arg, stack, captured)?.clone();
                 }
-                let value = func(self, collected)?;
-                self.stack.release(collected.len());
+                let value = func(self, &mut collected)?;
                 value
             }
             Expression::AssignGlobal(addr, expr) => {
