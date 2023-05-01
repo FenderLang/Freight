@@ -35,7 +35,7 @@ impl<T: Default> StackPool<T> {
         }
 
         unsafe {
-            let ptr = self.stack.as_mut_ptr().offset(self.base as isize);
+            let ptr = self.stack.as_mut_ptr().add(self.base);
 
             self.base += capacity;
             let slice = std::slice::from_raw_parts_mut(ptr, capacity);
@@ -136,7 +136,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         mut args: impl FnMut(&mut ExecutionEngine<TS>) -> Result<TS::Value, FreightError>,
         arg_count: usize,
     ) -> Result<TS::Value, FreightError> {
-        let mut stack = self.stack.request(func.stack_size);
+        let stack = self.stack.request(func.stack_size);
         if !func.arg_count.valid_arg_count(arg_count) {
             return Err(FreightError::IncorrectArgumentCount {
                 expected_min: func.arg_count.min(),
@@ -180,8 +180,8 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
         let function = self.get_function(func.location);
         let value = match &func.function_type {
-            FunctionType::CapturingRef(captures) => function.call(self, &mut stack, captures),
-            FunctionType::Static => function.call(self, &mut stack, &[]),
+            FunctionType::CapturingRef(captures) => function.call(self, stack, captures),
+            FunctionType::Static => function.call(self, stack, &[]),
             FunctionType::CapturingDef(_) => Err(FreightError::InvalidInvocationTarget),
             FunctionType::Native(_) => unreachable!("Native function already handled"),
         };
