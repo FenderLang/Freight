@@ -5,7 +5,7 @@ use crate::{
     expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType, FunctionWriter},
     operators::{BinaryOperator, Initializer, UnaryOperator},
-    slice_pool::{BoxSlicePool, IntoExactSizeIterator, PooledBoxSlice, RcSlicePool},
+    slice_pool::{IntoExactSizeIterator, RcSlicePool},
     value::Value,
     TypeSystem,
 };
@@ -13,7 +13,46 @@ use crate::{error::OrReturn, function::Function};
 use std::cell::UnsafeCell;
 use std::rc::Rc;
 
-pub type Stack<T> = PooledBoxSlice<T>;
+pub type Stack<'a, T> = &'a mut [T];
+
+pub struct StackPool<T: Default> {
+    stack: Vec<T>,
+    base: usize,
+}
+
+impl<T: Default> StackPool<T> {
+    pub fn with_capacity(capacity: usize) -> StackPool<T> {
+        let mut stack = Vec::with_capacity(capacity);
+        for _ in 0..capacity {
+            stack.push(Default::default());
+        }
+        StackPool { stack, base: 0 }
+    }
+
+    pub fn request<'a>(&mut self, capacity: usize) -> &'a mut [T] {
+        if self.base + capacity >= self.stack.len() {
+            panic!("Stack overflow {} / {}", self.base, self.stack.len());
+        }
+
+        unsafe {
+            let ptr = self.stack.as_mut_ptr().offset(self.base as isize);
+
+            self.base += capacity;
+            let slice = std::slice::from_raw_parts_mut(ptr, capacity);
+            slice
+        }
+    }
+
+    pub fn release(&mut self, capacity: usize) {
+        self.base -= capacity;
+    }
+}
+
+impl<T: Default> Default for StackPool<T> {
+    fn default() -> Self {
+        Self::with_capacity(10000)
+    }
+}
 
 pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) num_globals: usize,
@@ -21,7 +60,7 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) functions: UnsafeCell<Vec<Function<TS>>>,
     pub(crate) next_return_target: usize,
     pub(crate) return_value: TS::Value,
-    pub box_pool: Rc<UnsafeCell<BoxSlicePool<TS::Value>>>,
+    pub stack: StackPool<TS::Value>,
     pub rc_pool: Rc<UnsafeCell<RcSlicePool<TS::Value>>>,
     pub context: TS::GlobalContext,
 }
@@ -34,7 +73,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             functions: vec![].into(),
             next_return_target: 0,
             return_value: Default::default(),
-            box_pool: Default::default(),
+            stack: Default::default(),
             context,
             rc_pool: Default::default(),
         }
@@ -86,19 +125,18 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         args: impl IntoExactSizeIterator<Item = TS::Value>,
     ) -> Result<TS::Value, FreightError> {
-        let stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
         let mut iter = args.into_exact_size_iter();
         let arg_count = iter.len();
-        self.call_internal(func, stack, |_| Ok(iter.next().unwrap()), arg_count)
+        self.call_internal(func, |_| Ok(iter.next().unwrap()), arg_count)
     }
 
     pub(crate) fn call_internal(
         &mut self,
         func: &FunctionRef<TS>,
-        mut stack: Stack<TS::Value>,
         mut args: impl FnMut(&mut ExecutionEngine<TS>) -> Result<TS::Value, FreightError>,
         arg_count: usize,
     ) -> Result<TS::Value, FreightError> {
+        let mut stack = self.stack.request(func.stack_size);
         if !func.arg_count.valid_arg_count(arg_count) {
             return Err(FreightError::IncorrectArgumentCount {
                 expected_min: func.arg_count.min(),
@@ -136,15 +174,19 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
 
         if let FunctionType::Native(func) = &func.function_type {
-            return func(self, stack);
+            let value = func(self, stack);
+            self.stack.release(stack.len());
+            return value;
         }
         let function = self.get_function(func.location);
-        match &func.function_type {
+        let value = match &func.function_type {
             FunctionType::CapturingRef(captures) => function.call(self, &mut stack, captures),
             FunctionType::Static => function.call(self, &mut stack, &[]),
             FunctionType::CapturingDef(_) => Err(FreightError::InvalidInvocationTarget),
             FunctionType::Native(_) => unreachable!("Native function already handled"),
-        }
+        };
+        self.stack.release(stack.len());
+        value
     }
 
     #[inline]
@@ -176,12 +218,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 op.apply_1(&v)
             }
             Expression::StaticFunctionCall(func, args) => {
-                let new_stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
                 let mut args = args.iter();
                 let arg_count = args.len();
                 self.call_internal(
                     func,
-                    new_stack,
                     |e| e.evaluate_internal(args.next().unwrap(), stack, captured),
                     arg_count,
                 )?
@@ -191,12 +231,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 let Some(func): Option<&FunctionRef<TS>> = func.cast_to_function() else {
                     return Err(FreightError::InvalidInvocationTarget);
                 };
-                let new_stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
                 let mut iter = args.iter();
                 let arg_count = iter.len();
                 self.call_internal(
                     func,
-                    new_stack,
                     |e| e.evaluate_internal(iter.next().unwrap(), stack, captured),
                     arg_count,
                 )?
@@ -224,11 +262,13 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 Default::default()
             }
             Expression::NativeFunctionCall(func, args) => {
-                let mut collected = BoxSlicePool::request(self.box_pool.clone(), args.len());
+                let collected = self.stack.request(args.len());
                 for (i, arg) in args.iter().enumerate() {
                     collected[i] = self.evaluate_internal(arg, stack, captured)?.clone();
                 }
-                func(self, collected)?
+                let value = func(self, collected)?;
+                self.stack.release(collected.len());
+                value
             }
             Expression::AssignGlobal(addr, expr) => {
                 let val = self.evaluate_internal(expr, stack, captured)?;
