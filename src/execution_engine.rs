@@ -143,13 +143,13 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             return value;
         }
         let function = self.get_function(func.location);
-        let value = match &func.function_type {
+        
+        match &func.function_type {
             FunctionType::CapturingRef(captures) => function.call(self, &mut stack, captures),
             FunctionType::Static => function.call(self, &mut stack, &[]),
             FunctionType::CapturingDef(_) => Err(FreightError::InvalidInvocationTarget),
             FunctionType::Native(_) => unreachable!("Native function already handled"),
-        };
-        value
+        }
     }
 
     #[inline]
@@ -229,8 +229,8 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 for (i, arg) in args.iter().enumerate() {
                     collected[i] = self.evaluate_internal(arg, stack, captured)?.clone();
                 }
-                let value = func(self, &mut collected)?;
-                value
+                
+                func(self, &mut collected)?
             }
             Expression::AssignGlobal(addr, expr) => {
                 let val = self.evaluate_internal(expr, stack, captured)?;

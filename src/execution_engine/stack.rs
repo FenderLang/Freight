@@ -18,13 +18,13 @@ impl<'a, T: Default> Deref for StackSlice<'a, T> {
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
-        &self.slice
+        self.slice
     }
 }
 
 impl<'a, T: Default> DerefMut for StackSlice<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.slice
+        self.slice
     }
 }
 
@@ -51,7 +51,7 @@ impl<T: Default> StackPool<T> {
         }
 
         unsafe {
-            let ptr = this.stack.as_mut_ptr().offset(this.base as isize);
+            let ptr = this.stack.as_mut_ptr().add(this.base);
 
             this.base += capacity;
             let slice = std::slice::from_raw_parts_mut(ptr, capacity);
