@@ -1,3 +1,4 @@
+use self::stack::StackPool;
 #[cfg(feature = "variadic_functions")]
 use crate::function::ArgCount;
 use crate::{
@@ -12,8 +13,6 @@ use crate::{
 use crate::{error::OrReturn, function::Function};
 use std::cell::UnsafeCell;
 use std::rc::Rc;
-
-use self::stack::StackPool;
 
 pub mod stack;
 

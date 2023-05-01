@@ -1,9 +1,8 @@
+use super::arg_count::ArgCount;
+use super::{Function, FunctionRef, FunctionType, StackLayout};
 use crate::expression::VariableType;
 use crate::{expression::Expression, TypeSystem};
 use std::fmt::Debug;
-
-use super::arg_count::ArgCount;
-use super::{Function, FunctionRef, FunctionType, StackLayout};
 
 #[derive(Debug)]
 pub struct FunctionWriter<TS: TypeSystem> {
