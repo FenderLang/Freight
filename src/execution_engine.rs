@@ -138,8 +138,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
 
         if let FunctionType::Native(func) = &func.function_type {
-            let value = func(self, &mut stack);
-            return value;
+            return func(self, &mut stack);
         }
         let function = self.get_function(func.location);
 
