@@ -1,3 +1,4 @@
+use self::stack::StackPool;
 #[cfg(feature = "variadic_functions")]
 use crate::function::ArgCount;
 use crate::{
@@ -5,7 +6,7 @@ use crate::{
     expression::{Expression, VariableType},
     function::{FunctionRef, FunctionType, FunctionWriter},
     operators::{BinaryOperator, Initializer, UnaryOperator},
-    slice_pool::{BoxSlicePool, IntoExactSizeIterator, PooledBoxSlice, RcSlicePool},
+    slice_pool::{IntoExactSizeIterator, RcSlicePool},
     value::Value,
     TypeSystem,
 };
@@ -13,7 +14,9 @@ use crate::{error::OrReturn, function::Function};
 use std::cell::UnsafeCell;
 use std::rc::Rc;
 
-pub type Stack<T> = PooledBoxSlice<T>;
+pub mod stack;
+
+pub type Stack<'a, T> = &'a mut [T];
 
 pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) num_globals: usize,
@@ -21,7 +24,7 @@ pub struct ExecutionEngine<TS: TypeSystem> {
     pub(crate) functions: UnsafeCell<Vec<Function<TS>>>,
     pub(crate) next_return_target: usize,
     pub(crate) return_value: TS::Value,
-    pub box_pool: Rc<UnsafeCell<BoxSlicePool<TS::Value>>>,
+    pub stack: Rc<UnsafeCell<StackPool<TS::Value>>>,
     pub rc_pool: Rc<UnsafeCell<RcSlicePool<TS::Value>>>,
     pub context: TS::GlobalContext,
 }
@@ -34,7 +37,7 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
             functions: vec![].into(),
             next_return_target: 0,
             return_value: Default::default(),
-            box_pool: Default::default(),
+            stack: Default::default(),
             context,
             rc_pool: Default::default(),
         }
@@ -86,19 +89,18 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         func: &FunctionRef<TS>,
         args: impl IntoExactSizeIterator<Item = TS::Value>,
     ) -> Result<TS::Value, FreightError> {
-        let stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
         let mut iter = args.into_exact_size_iter();
         let arg_count = iter.len();
-        self.call_internal(func, stack, |_| Ok(iter.next().unwrap()), arg_count)
+        self.call_internal(func, |_| Ok(iter.next().unwrap()), arg_count)
     }
 
     pub(crate) fn call_internal(
         &mut self,
         func: &FunctionRef<TS>,
-        mut stack: Stack<TS::Value>,
         mut args: impl FnMut(&mut ExecutionEngine<TS>) -> Result<TS::Value, FreightError>,
         arg_count: usize,
     ) -> Result<TS::Value, FreightError> {
+        let mut stack = StackPool::request(self.stack.clone(), func.stack_size);
         if !func.arg_count.valid_arg_count(arg_count) {
             return Err(FreightError::IncorrectArgumentCount {
                 expected_min: func.arg_count.min(),
@@ -109,10 +111,22 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         let mut arg_num = 0;
         let max = func.arg_count.max_capped().min(arg_count);
         while arg_num < max {
-            stack[arg_num] = args(self)?;
+            let mut value = args(self)?;
+            if func.layout.is_alloc(arg_num) {
+                value = value.into_ref();
+            } else {
+                value = value.clone();
+            }
+            stack[arg_num] = value;
             arg_num += 1;
         }
-        stack[arg_num..].fill_with(Value::uninitialized_reference);
+        for (i, arg) in (arg_num..).zip(stack[arg_num..].iter_mut()) {
+            if func.layout.is_alloc(i) {
+                *arg = Value::uninitialized_reference();
+            } else {
+                *arg = Default::default();
+            }
+        }
 
         #[cfg(feature = "variadic_functions")]
         if let ArgCount::Variadic { .. } = func.arg_count {
@@ -124,12 +138,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
         }
 
         if let FunctionType::Native(func) = &func.function_type {
-            return func(self, stack);
-        }
-        for val in stack[0..max].iter_mut() {
-            *val = val.clone().into_ref();
+            return func(self, &mut stack);
         }
         let function = self.get_function(func.location);
+
         match &func.function_type {
             FunctionType::CapturingRef(captures) => function.call(self, &mut stack, captures),
             FunctionType::Static => function.call(self, &mut stack, &[]),
@@ -167,12 +179,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 op.apply_1(&v)
             }
             Expression::StaticFunctionCall(func, args) => {
-                let new_stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
                 let mut args = args.iter();
                 let arg_count = args.len();
                 self.call_internal(
                     func,
-                    new_stack,
                     |e| e.evaluate_internal(args.next().unwrap(), stack, captured),
                     arg_count,
                 )?
@@ -182,12 +192,10 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 let Some(func): Option<&FunctionRef<TS>> = func.cast_to_function() else {
                     return Err(FreightError::InvalidInvocationTarget);
                 };
-                let new_stack = BoxSlicePool::request(self.box_pool.clone(), func.stack_size);
                 let mut iter = args.iter();
                 let arg_count = iter.len();
                 self.call_internal(
                     func,
-                    new_stack,
                     |e| e.evaluate_internal(iter.next().unwrap(), stack, captured),
                     arg_count,
                 )?
@@ -215,11 +223,12 @@ impl<TS: TypeSystem> ExecutionEngine<TS> {
                 Default::default()
             }
             Expression::NativeFunctionCall(func, args) => {
-                let mut collected = BoxSlicePool::request(self.box_pool.clone(), args.len());
+                let mut collected = StackPool::request(self.stack.clone(), args.len());
                 for (i, arg) in args.iter().enumerate() {
                     collected[i] = self.evaluate_internal(arg, stack, captured)?.clone();
                 }
-                func(self, collected)?
+
+                func(self, &mut collected)?
             }
             Expression::AssignGlobal(addr, expr) => {
                 let val = self.evaluate_internal(expr, stack, captured)?;

@@ -1,6 +1,31 @@
 use super::{arg_count::ArgCount, FunctionType};
 use crate::{expression::NativeFunction, TypeSystem};
 
+#[derive(Debug, Clone)]
+pub struct StackLayout(u128);
+
+impl StackLayout {
+    pub fn all_alloc() -> StackLayout {
+        StackLayout(u128::MAX)
+    }
+
+    pub fn no_alloc() -> StackLayout {
+        StackLayout(0)
+    }
+
+    pub fn set_alloc(&mut self, slot: usize) {
+        self.0 |= 1 << slot;
+    }
+
+    pub fn set_stack(&mut self, slot: usize) {
+        self.0 &= !(1 << slot);
+    }
+
+    pub fn is_alloc(&self, slot: usize) -> bool {
+        (self.0 & (1 << slot)) != 0
+    }
+}
+
 /// Represents a reference to a function that has been included in a VM
 #[derive(Debug, Clone)]
 pub struct FunctionRef<TS: TypeSystem> {
@@ -8,6 +33,7 @@ pub struct FunctionRef<TS: TypeSystem> {
     pub(crate) stack_size: usize,
     pub(crate) location: usize,
     pub function_type: FunctionType<TS>,
+    pub layout: StackLayout,
 }
 
 impl<TS: TypeSystem> PartialEq for FunctionRef<TS> {
@@ -28,6 +54,7 @@ impl<TS: TypeSystem> FunctionRef<TS> {
             location: id,
             stack_size: arg_count.stack_size(),
             function_type: FunctionType::Native(func),
+            layout: StackLayout::no_alloc(),
         }
     }
 
